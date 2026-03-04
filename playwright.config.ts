@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: 'tests/visual',
+  testDir: 'tests',
+  testMatch: ['visual/**/*.spec.ts', 'e2e/**/*.spec.ts'],
   use: {
     baseURL: 'http://localhost:5173',
   },
@@ -11,7 +12,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'],
+          args: ['--enable-webgl', '--ignore-gpu-blocklist'],
         },
       },
     },

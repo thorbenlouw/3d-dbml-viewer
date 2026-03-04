@@ -23,11 +23,9 @@ interface SimLink extends SimulationLinkDatum<SimNode> {
   target: string;
 }
 
-export function computeLayout(schema: ParsedSchema): LayoutNode[] {
-  const n = schema.tables.length;
-
-  // Deterministic initial positions — evenly spaced on a unit sphere
-  const nodes: SimNode[] = schema.tables.map((table, i) => {
+export function seedNodePositions(tables: { id: string; name: string }[]): SimNode[] {
+  const n = tables.length;
+  return tables.map((table, i) => {
     const phi = Math.acos(1 - (2 * (i + 0.5)) / n);
     const theta = Math.PI * (1 + Math.sqrt(5)) * i;
     const r = 2;
@@ -39,6 +37,11 @@ export function computeLayout(schema: ParsedSchema): LayoutNode[] {
       z: r * Math.cos(phi),
     };
   });
+}
+
+export function computeLayout(schema: ParsedSchema): LayoutNode[] {
+  // Deterministic initial positions — evenly spaced on a unit sphere
+  const nodes: SimNode[] = seedNodePositions(schema.tables);
 
   const links: SimLink[] = schema.refs.map((ref) => ({
     source: ref.sourceId,

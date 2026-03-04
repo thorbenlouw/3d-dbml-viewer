@@ -1,12 +1,10 @@
 import { parseDatabaseSchema, ParseError } from '@/parser';
-import { computeLayout } from '@/layout';
 import { HARD_CODED_DBML } from '@/data/schema.dbml';
 import Scene from '@/renderer/Scene';
-import type { LayoutNode, ParsedSchema } from '@/types';
+import type { ParsedSchema } from '@/types';
 import type { ReactElement } from 'react';
 
 interface AppData {
-  nodes: LayoutNode[];
   schema: ParsedSchema;
   error: string | null;
 }
@@ -14,15 +12,14 @@ interface AppData {
 function buildAppData(): AppData {
   try {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    return { nodes: computeLayout(schema), schema, error: null };
+    return { schema, error: null };
   } catch (err) {
     if (err instanceof ParseError) {
       console.error('ParseError:', err.message, err.cause);
-      return { nodes: [], schema: { tables: [], refs: [] }, error: err.message };
+      return { schema: { tables: [], refs: [] }, error: err.message };
     }
     console.error('Unexpected error:', err);
     return {
-      nodes: [],
       schema: { tables: [], refs: [] },
       error: 'An unexpected error occurred',
     };
@@ -49,7 +46,7 @@ export default function App(): ReactElement {
         position: 'relative',
       }}
     >
-      <Scene nodes={INITIAL_DATA.nodes} schema={INITIAL_DATA.schema} />
+      <Scene schema={INITIAL_DATA.schema} />
     </div>
   );
 }

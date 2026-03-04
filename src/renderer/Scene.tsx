@@ -12,9 +12,9 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type {
   ActiveNote,
-  LayoutNode,
   ParsedSchema,
   RelationshipLinkModel,
+  SimulationNode,
   TableCardNode,
 } from '@/types';
 import { NOTE_PANEL_OFFSET, RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
@@ -24,9 +24,10 @@ import NotePanel from './NotePanel';
 import NoteConnector from './NoteConnector';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import ResetViewButton from './ResetViewButton';
+import { useForceSimulation } from '@/layout/useForceSimulation';
+import { useDragCard } from './useDragCard';
 
 interface SceneProps {
-  nodes: LayoutNode[];
   schema: ParsedSchema;
 }
 
@@ -49,12 +50,21 @@ interface CameraFrame {
   target: THREE.Vector3;
 }
 
+interface DraggableTableCardProps {
+  node: TableCardNode;
+  highlightedColumn?: string | '__table__';
+  onNoteClick?: (note: ActiveNote) => void;
+  onDragStart: (id: string, pos: THREE.Vector3) => void;
+  onDragMove: (id: string, delta: THREE.Vector3) => void;
+  onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
+}
+
 function easeInOutCubic(t: number): number {
   if (t < 0.5) return 4 * t * t * t;
   return 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-function buildCardNodes(nodes: LayoutNode[], schema: ParsedSchema): TableCardNode[] {
+function buildCardNodes(nodes: SimulationNode[], schema: ParsedSchema): TableCardNode[] {
   const tableById = new Map(schema.tables.map((table) => [table.id, table]));
 
   return nodes.flatMap((node) => {
@@ -156,7 +166,42 @@ function computeCameraFrameFromPoints(points: THREE.Vector3[], fovDeg: number): 
   return { position, target };
 }
 
-export default function Scene({ nodes, schema }: SceneProps): ReactElement {
+function DraggableTableCard({
+  node,
+  highlightedColumn,
+  onNoteClick,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+}: DraggableTableCardProps): ReactElement {
+  const { camera, gl } = useThree();
+  const worldPosition = useMemo(
+    () => new THREE.Vector3(node.x, node.y, node.z),
+    [node.x, node.y, node.z],
+  );
+
+  const dragHandlers = useDragCard({
+    nodeId: node.id,
+    worldPosition,
+    camera,
+    gl,
+    onDragStart,
+    onDragMove,
+    onDragEnd,
+  });
+
+  return (
+    <TableCard
+      node={node}
+      highlightedColumn={highlightedColumn}
+      onNoteClick={onNoteClick}
+      dragHandlers={dragHandlers}
+      isPinned={node.isPinned}
+    />
+  );
+}
+
+export default function Scene({ schema }: SceneProps): ReactElement {
   const hasWebGL = useMemo(() => {
     const canvas = document.createElement('canvas');
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
@@ -165,8 +210,11 @@ export default function Scene({ nodes, schema }: SceneProps): ReactElement {
   const [activeNote, setActiveNote] = useState<ActiveNote | null>(null);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
+  const isDraggingRef = useRef(false);
 
-  const cardNodes = useMemo(() => buildCardNodes(nodes, schema), [nodes, schema]);
+  const { nodes: simNodes, setPin, nudge } = useForceSimulation(schema);
+
+  const cardNodes = useMemo(() => buildCardNodes(simNodes, schema), [simNodes, schema]);
   const linkModels = useMemo(() => buildLinkModels(schema), [schema]);
   const cardById = useMemo(() => new Map(cardNodes.map((node) => [node.id, node])), [cardNodes]);
 
@@ -233,6 +281,35 @@ export default function Scene({ nodes, schema }: SceneProps): ReactElement {
     tweenStateRef.current.endTarget = resetFrame.target;
     tweenStateRef.current.startTime = Date.now();
   }, [framePoints]);
+
+  const handleDragStart = useCallback(
+    (id: string, pos: THREE.Vector3) => {
+      setPin(id, { x: pos.x, y: pos.y, z: pos.z });
+      isDraggingRef.current = true;
+      if (controlsRef.current) controlsRef.current.enabled = false;
+    },
+    [setPin],
+  );
+
+  const handleDragMove = useCallback(
+    (id: string, delta: THREE.Vector3) => {
+      nudge(id, { x: delta.x, y: delta.y, z: delta.z }, 0.6);
+    },
+    [nudge],
+  );
+
+  const handleDragEnd = useCallback(
+    (id: string, pos: THREE.Vector3, isPinRelease: boolean) => {
+      if (isPinRelease) {
+        setPin(id, null);
+      } else {
+        setPin(id, { x: pos.x, y: pos.y, z: pos.z });
+      }
+      isDraggingRef.current = false;
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    },
+    [setPin],
+  );
 
   if (hasWebGL === false) {
     return (
@@ -307,11 +384,14 @@ export default function Scene({ nodes, schema }: SceneProps): ReactElement {
           const highlightedColumn =
             activeNote?.tableId === node.id ? (activeNote.columnName ?? '__table__') : undefined;
           return (
-            <TableCard
+            <DraggableTableCard
               key={node.id}
               node={node}
               highlightedColumn={highlightedColumn}
               onNoteClick={setActiveNote}
+              onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
             />
           );
         })}

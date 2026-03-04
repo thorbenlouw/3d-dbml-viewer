@@ -36,7 +36,19 @@ export interface LayoutNode {
   z: number;
 }
 
-export interface TableCardNode extends LayoutNode {
+export interface SimulationNode extends LayoutNode {
+  fx: number | null;
+  fy: number | null;
+  fz: number | null;
+  isPinned: boolean;
+  // d3-force-3d internal fields (added at runtime, not set by us)
+  vx?: number;
+  vy?: number;
+  vz?: number;
+  index?: number;
+}
+
+export interface TableCardNode extends SimulationNode {
   table: ParsedTable;
 }
 

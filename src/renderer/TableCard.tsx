@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import * as THREE from 'three';
 import type { ActiveNote, ParsedColumn, TableCardNode } from '@/types';
 import {
@@ -33,10 +34,19 @@ import {
 } from './constants';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 
+interface DragHandlers {
+  onPointerDown: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerUp: (e: ThreeEvent<PointerEvent>) => void;
+  onDoubleClick: (e: ThreeEvent<MouseEvent>) => void;
+}
+
 interface TableCardProps {
   node: TableCardNode;
   highlightedColumn?: string | '__table__';
   onNoteClick?: (note: ActiveNote) => void;
+  dragHandlers?: DragHandlers;
+  isPinned?: boolean;
 }
 
 interface FieldBadge {
@@ -63,12 +73,15 @@ export default function TableCard({
   node,
   highlightedColumn,
   onNoteClick,
+  dragHandlers,
+  isPinned = false,
 }: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const { camera } = useThree();
+  const [showPinTooltip, setShowPinTooltip] = useState(false);
 
   const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
 
@@ -165,6 +178,49 @@ export default function TableCard({
       <lineSegments geometry={edgesGeometry}>
         <lineBasicMaterial color={CARD_EDGE_COLOR} />
       </lineSegments>
+
+      {/* Full-card transparent hit mesh for drag events */}
+      {dragHandlers && (
+        <mesh
+          position={[0, 0, dimensions.depth / 2 + 0.005]}
+          onPointerDown={dragHandlers.onPointerDown}
+          onPointerMove={dragHandlers.onPointerMove}
+          onPointerUp={dragHandlers.onPointerUp}
+          onDoubleClick={dragHandlers.onDoubleClick}
+        >
+          <boxGeometry args={[dimensions.width, dimensions.height, 0.01]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+      )}
+
+      {/* Pin indicator */}
+      {isPinned && (
+        <group
+          position={[
+            dimensions.width / 2 - 0.1,
+            dimensions.height / 2 - CARD_HEADER_HEIGHT / 2,
+            dimensions.depth / 2 + 0.02,
+          ]}
+          onPointerEnter={() => setShowPinTooltip(true)}
+          onPointerLeave={() => setShowPinTooltip(false)}
+        >
+          <mesh>
+            <sphereGeometry args={[0.06, 12, 8]} />
+            <meshBasicMaterial color="white" transparent opacity={0.8} />
+          </mesh>
+          {showPinTooltip && (
+            <Text
+              color="white"
+              fontSize={0.07}
+              position={[-0.35, 0, 0.01]}
+              anchorX="right"
+              anchorY="middle"
+            >
+              double-click to release
+            </Text>
+          )}
+        </group>
+      )}
 
       <Text
         color={TEXT_COLOR}
