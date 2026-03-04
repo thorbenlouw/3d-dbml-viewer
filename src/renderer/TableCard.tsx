@@ -1,8 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import { useEffect, useMemo, useRef, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as THREE from 'three';
-import type { ParsedColumn, TableCardNode } from '@/types';
+import type { ActiveNote, ParsedColumn, TableCardNode } from '@/types';
 import {
   BADGE_BG_COLOR,
   BADGE_GAP,
@@ -21,6 +21,9 @@ import {
   CARD_VERTICAL_PADDING,
   DISTANCE_FAR,
   DISTANCE_NEAR,
+  NOTE_HIGHLIGHT_COLOR,
+  NOTE_ICON_CHAR,
+  NOTE_ICON_SIZE,
   OPACITY_FAR,
   OPACITY_NEAR,
   TEXT_BADGE_SIZE,
@@ -32,6 +35,8 @@ import { estimateTableCardDimensions } from './tableCardMetrics';
 
 interface TableCardProps {
   node: TableCardNode;
+  highlightedColumn?: string | '__table__';
+  onNoteClick?: (note: ActiveNote) => void;
 }
 
 interface FieldBadge {
@@ -54,7 +59,11 @@ function getBadges(column: ParsedColumn): FieldBadge[] {
   ];
 }
 
-export default function TableCard({ node }: TableCardProps): ReactElement {
+export default function TableCard({
+  node,
+  highlightedColumn,
+  onNoteClick,
+}: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
@@ -62,6 +71,43 @@ export default function TableCard({ node }: TableCardProps): ReactElement {
   const { camera } = useThree();
 
   const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
+
+  const handleTableNoteClick = useCallback(() => {
+    if (!onNoteClick || !node.table.note) return;
+    const anchorPos: [number, number, number] = [
+      node.x + dimensions.width / 2,
+      node.y + dimensions.height / 2 - CARD_HEADER_HEIGHT / 2,
+      node.z + dimensions.depth / 2,
+    ];
+    onNoteClick({
+      tableId: node.id,
+      columnName: undefined,
+      noteText: node.table.note,
+      ownerLabel: `Table: ${node.table.name}`,
+      anchorWorldPosition: anchorPos,
+      cardPosition: [node.x, node.y, node.z],
+    });
+  }, [onNoteClick, node, dimensions]);
+
+  const makeColumnNoteClickHandler = useCallback(
+    (column: ParsedColumn, rowY: number) => () => {
+      if (!onNoteClick || !column.note) return;
+      const anchorPos: [number, number, number] = [
+        node.x + dimensions.width / 2,
+        node.y + rowY,
+        node.z + dimensions.depth / 2,
+      ];
+      onNoteClick({
+        tableId: node.id,
+        columnName: column.name,
+        noteText: column.note,
+        ownerLabel: `${node.table.name}.${column.name}`,
+        anchorWorldPosition: anchorPos,
+        cardPosition: [node.x, node.y, node.z],
+      });
+    },
+    [onNoteClick, node, dimensions],
+  );
   const headerY = dimensions.height / 2 - CARD_HEADER_HEIGHT / 2;
   const bodyHeight = dimensions.height - CARD_HEADER_HEIGHT;
   const bodyY = -dimensions.height / 2 + bodyHeight / 2;
@@ -110,7 +156,7 @@ export default function TableCard({ node }: TableCardProps): ReactElement {
         <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, dimensions.depth]} />
         <meshBasicMaterial
           ref={headerMaterialRef}
-          color={CARD_HEADER_COLOR}
+          color={highlightedColumn === '__table__' ? NOTE_HIGHLIGHT_COLOR : CARD_HEADER_COLOR}
           transparent
           opacity={OPACITY_FAR}
         />
@@ -131,6 +177,30 @@ export default function TableCard({ node }: TableCardProps): ReactElement {
         {truncate(node.table.name, 32)}
       </Text>
 
+      {node.table.note && (
+        <group
+          position={[
+            dimensions.width / 2 - CARD_HORIZONTAL_PADDING,
+            headerY,
+            dimensions.depth / 2 + 0.015,
+          ]}
+        >
+          <mesh onClick={handleTableNoteClick}>
+            <boxGeometry args={[0.18, CARD_HEADER_HEIGHT * 0.8, 0.01]} />
+            <meshBasicMaterial transparent opacity={0} />
+          </mesh>
+          <Text
+            color={NOTE_HIGHLIGHT_COLOR}
+            fontSize={NOTE_ICON_SIZE}
+            anchorX="center"
+            anchorY="middle"
+            position={[0, 0, 0.006]}
+          >
+            {NOTE_ICON_CHAR}
+          </Text>
+        </group>
+      )}
+
       {node.table.columns.map((column, index) => {
         const rowTop =
           dimensions.height / 2 -
@@ -141,13 +211,20 @@ export default function TableCard({ node }: TableCardProps): ReactElement {
         const leftX = -dimensions.width / 2 + CARD_HORIZONTAL_PADDING;
         const badgeGroupRightX = dimensions.width / 2 - CARD_HORIZONTAL_PADDING;
         const badges = getBadges(column).filter((badge) => badge.active);
+        const isHighlighted = highlightedColumn === column.name;
 
         return (
           <group key={`${node.id}-${column.name}-${index}`}>
             <mesh position={[0, rowY, dimensions.depth / 2 - rowSliceDepth / 2 + 0.001]}>
               <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, rowSliceDepth]} />
               <meshBasicMaterial
-                color={index % 2 === 0 ? CARD_ROW_EVEN_COLOR : CARD_ROW_ODD_COLOR}
+                color={
+                  isHighlighted
+                    ? NOTE_HIGHLIGHT_COLOR
+                    : index % 2 === 0
+                      ? CARD_ROW_EVEN_COLOR
+                      : CARD_ROW_ODD_COLOR
+                }
               />
             </mesh>
 
@@ -201,6 +278,31 @@ export default function TableCard({ node }: TableCardProps): ReactElement {
                 </group>
               );
             })}
+
+            {column.note && (
+              <group
+                position={[
+                  badgeGroupRightX -
+                    (badges.length > 0 ? badges.length * (BADGE_WIDTH + BADGE_GAP) + 0.1 : 0),
+                  rowY,
+                  dimensions.depth / 2 + 0.015,
+                ]}
+              >
+                <mesh onClick={makeColumnNoteClickHandler(column, rowY)}>
+                  <boxGeometry args={[0.16, CARD_ROW_HEIGHT * 0.8, 0.01]} />
+                  <meshBasicMaterial transparent opacity={0} />
+                </mesh>
+                <Text
+                  color={NOTE_HIGHLIGHT_COLOR}
+                  fontSize={NOTE_ICON_SIZE}
+                  anchorX="center"
+                  anchorY="middle"
+                  position={[0, 0, 0.006]}
+                >
+                  {NOTE_ICON_CHAR}
+                </Text>
+              </group>
+            )}
           </group>
         );
       })}

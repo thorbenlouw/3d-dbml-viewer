@@ -40,3 +40,13 @@ export const BADGE_TEXT_COLOR = '#F8FDFF';
 export const LINK_COLOR = '#92D8FF';
 export const LINK_TUBE_RADIUS = 0.012;
 export const LINK_TUBE_RADIAL_SEGMENTS = 8;
+
+export const NOTE_ICON_CHAR = '✎';
+export const NOTE_ICON_SIZE = 0.065;
+export const NOTE_HIGHLIGHT_COLOR = '#f59e0b';
+export const NOTE_PANEL_MAX_WIDTH = 3.0;
+export const NOTE_PANEL_MAX_HEIGHT = 2.5;
+export const NOTE_PANEL_PADDING = 0.12;
+export const NOTE_PANEL_OFFSET = 1.8;
+export const NOTE_CONNECTOR_COLOR = '#f59e0b';
+export const NOTE_CONNECTOR_LINE_WIDTH = 1.5;

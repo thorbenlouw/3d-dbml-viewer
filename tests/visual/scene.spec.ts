@@ -37,3 +37,22 @@ test('3D scene renders with canvas, Reset View button, and no errors', async ({ 
   await page.waitForTimeout(500);
   expect(pageErrors).toHaveLength(0);
 });
+
+test('field and table notes — canvas loads without errors', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => {
+    if (!err.message.includes('WebGL context')) {
+      pageErrors.push(err.message);
+    }
+  });
+
+  await page.goto('/');
+
+  const canvas = page.locator('canvas');
+  const fallback = page.getByText('WebGL is unavailable in this browser session.');
+
+  await expect(canvas.or(fallback)).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(1000);
+
+  expect(pageErrors).toHaveLength(0);
+});

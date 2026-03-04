@@ -2,6 +2,7 @@ import {
   useRef,
   useCallback,
   useMemo,
+  useState,
   type ReactElement,
   type RefObject,
   type ComponentRef,
@@ -9,10 +10,18 @@ import {
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import type { LayoutNode, ParsedSchema, RelationshipLinkModel, TableCardNode } from '@/types';
-import { RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
+import type {
+  ActiveNote,
+  LayoutNode,
+  ParsedSchema,
+  RelationshipLinkModel,
+  TableCardNode,
+} from '@/types';
+import { NOTE_PANEL_OFFSET, RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
+import NotePanel from './NotePanel';
+import NoteConnector from './NoteConnector';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import ResetViewButton from './ResetViewButton';
 
@@ -153,6 +162,8 @@ export default function Scene({ nodes, schema }: SceneProps): ReactElement {
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
   }, []);
 
+  const [activeNote, setActiveNote] = useState<ActiveNote | null>(null);
+
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
 
   const cardNodes = useMemo(() => buildCardNodes(nodes, schema), [nodes, schema]);
@@ -292,9 +303,39 @@ export default function Scene({ nodes, schema }: SceneProps): ReactElement {
           );
         })}
 
-        {cardNodes.map((node) => (
-          <TableCard key={node.id} node={node} />
-        ))}
+        {cardNodes.map((node) => {
+          const highlightedColumn =
+            activeNote?.tableId === node.id ? (activeNote.columnName ?? '__table__') : undefined;
+          return (
+            <TableCard
+              key={node.id}
+              node={node}
+              highlightedColumn={highlightedColumn}
+              onNoteClick={setActiveNote}
+            />
+          );
+        })}
+
+        {activeNote !== null &&
+          (() => {
+            const [ax, ay, az] = activeNote.anchorWorldPosition;
+            const panelPosition: [number, number, number] = [
+              ax + NOTE_PANEL_OFFSET * 0.6,
+              ay + NOTE_PANEL_OFFSET,
+              az,
+            ];
+            return (
+              <>
+                <NotePanel
+                  ownerLabel={activeNote.ownerLabel}
+                  noteText={activeNote.noteText}
+                  position={panelPosition}
+                  onClose={() => setActiveNote(null)}
+                />
+                <NoteConnector from={activeNote.anchorWorldPosition} to={panelPosition} />
+              </>
+            );
+          })()}
       </Canvas>
       <ResetViewButton onClick={handleResetView} />
     </div>

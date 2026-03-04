@@ -5,12 +5,14 @@ export interface ParsedColumn {
   isForeignKey: boolean;
   isNotNull: boolean;
   isUnique: boolean;
+  note?: string;
 }
 
 export interface ParsedTable {
   id: string;
   name: string;
   columns: ParsedColumn[];
+  note?: string;
 }
 
 export interface ParsedRef {
@@ -36,6 +38,15 @@ export interface LayoutNode {
 
 export interface TableCardNode extends LayoutNode {
   table: ParsedTable;
+}
+
+export interface ActiveNote {
+  tableId: string;
+  columnName?: string;
+  noteText: string;
+  ownerLabel: string;
+  anchorWorldPosition: [number, number, number];
+  cardPosition: [number, number, number];
 }
 
 export interface RelationshipLinkModel {

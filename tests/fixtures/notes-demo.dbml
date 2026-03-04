@@ -1,4 +1,3 @@
-export const HARD_CODED_DBML = `
 Table follows [note: 'Adjacency list capturing social follow relationships between users'] {
   following_user_id integer
   followed_user_id integer
@@ -26,4 +25,3 @@ Ref user_posts: posts.user_id > users.id
 Ref: users.id < follows.following_user_id
 
 Ref: users.id < follows.followed_user_id
-`;

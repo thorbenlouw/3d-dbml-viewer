@@ -6,6 +6,7 @@ interface DbmlField {
   pk?: boolean;
   unique?: boolean;
   not_null?: boolean;
+  note?: string;
   type?: {
     type_name?: string;
   };
@@ -13,6 +14,7 @@ interface DbmlField {
 
 interface DbmlTable {
   name: string;
+  note?: string;
   fields: DbmlField[];
 }
 
@@ -68,14 +70,18 @@ function buildForeignKeyMap(schemas: DbmlSchema[]): Map<string, Set<string>> {
 function mapColumns(table: DbmlTable, foreignKeys: Map<string, Set<string>>): ParsedColumn[] {
   const foreignKeyColumns = foreignKeys.get(table.name) ?? new Set<string>();
 
-  return table.fields.map((field) => ({
-    name: field.name,
-    type: field.type?.type_name ?? 'unknown',
-    isPrimaryKey: Boolean(field.pk),
-    isForeignKey: foreignKeyColumns.has(field.name),
-    isNotNull: Boolean(field.not_null),
-    isUnique: Boolean(field.unique),
-  }));
+  return table.fields.map((field) => {
+    const rawNote = field.note?.trim();
+    return {
+      name: field.name,
+      type: field.type?.type_name ?? 'unknown',
+      isPrimaryKey: Boolean(field.pk),
+      isForeignKey: foreignKeyColumns.has(field.name),
+      isNotNull: Boolean(field.not_null),
+      isUnique: Boolean(field.unique),
+      note: rawNote !== undefined && rawNote.length > 0 ? rawNote : undefined,
+    };
+  });
 }
 
 function mapRefs(schemas: DbmlSchema[]): ParsedRef[] {
@@ -107,11 +113,15 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
 
   const foreignKeys = buildForeignKeyMap(database.schemas);
   const tables = database.schemas.flatMap((schema) =>
-    schema.tables.map((table) => ({
-      id: table.name,
-      name: table.name,
-      columns: mapColumns(table, foreignKeys),
-    })),
+    schema.tables.map((table) => {
+      const rawTableNote = table.note?.trim();
+      return {
+        id: table.name,
+        name: table.name,
+        columns: mapColumns(table, foreignKeys),
+        note: rawTableNote !== undefined && rawTableNote.length > 0 ? rawTableNote : undefined,
+      };
+    }),
   );
 
   const refs = mapRefs(database.schemas);

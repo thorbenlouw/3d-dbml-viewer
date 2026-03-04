@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { resolve, dirname } from 'node:path';
 import { parseDatabaseSchema, ParseError } from '@/parser';
 import { HARD_CODED_DBML } from '@/data/schema.dbml';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -118,6 +126,50 @@ describe('parseDatabaseSchema', () => {
 
   it('throws ParseError for malformed DBML', () => {
     expect(() => parseDatabaseSchema('not valid dbml {{{')).toThrow(ParseError);
+  });
+
+  describe('note extraction from notes-demo.dbml fixture', () => {
+    it('extracts note from posts.body column', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const posts = schema.tables.find((t) => t.name === 'posts');
+      const body = posts?.columns.find((c) => c.name === 'body');
+      expect(body?.note).toBe('Markdown content stored as plain text; HTML is escaped on read');
+    });
+
+    it('extracts note from posts.status column', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const posts = schema.tables.find((t) => t.name === 'posts');
+      const status = posts?.columns.find((c) => c.name === 'status');
+      expect(status?.note).toBe('draft | published | archived');
+    });
+
+    it('extracts note from users.role column', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const users = schema.tables.find((t) => t.name === 'users');
+      const role = users?.columns.find((c) => c.name === 'role');
+      expect(role?.note).toBe('One of: admin, editor, viewer');
+    });
+
+    it('extracts table-level note from follows table', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const follows = schema.tables.find((t) => t.name === 'follows');
+      expect(follows?.note).toBe(
+        'Adjacency list capturing social follow relationships between users',
+      );
+    });
+
+    it('users.id column has note === undefined', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const users = schema.tables.find((t) => t.name === 'users');
+      const id = users?.columns.find((c) => c.name === 'id');
+      expect(id?.note).toBeUndefined();
+    });
+
+    it('users table has note === undefined', () => {
+      const schema = parseDatabaseSchema(notesDemoDbml);
+      const users = schema.tables.find((t) => t.name === 'users');
+      expect(users?.note).toBeUndefined();
+    });
   });
 
   it('TablePartial blocks do not produce extra tables', () => {
