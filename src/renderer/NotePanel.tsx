@@ -7,7 +7,6 @@ import {
   NOTE_PANEL_MAX_WIDTH,
   NOTE_PANEL_MAX_HEIGHT,
   NOTE_PANEL_PADDING,
-  TEXT_COLOR,
   TEXT_ROW_SIZE,
   TEXT_BADGE_SIZE,
 } from './constants';
@@ -24,8 +23,10 @@ const PANEL_HEIGHT = NOTE_PANEL_MAX_HEIGHT;
 const PANEL_DEPTH = 0.04;
 const HEADER_HEIGHT = 0.28;
 const CLOSE_BTN_SIZE = 0.18;
-const PANEL_BG_COLOR = '#15304A';
-const HEADER_COLOR = '#1C5E95';
+const PANEL_BG_COLOR = '#FCD34D';
+const HEADER_COLOR = '#F59E0B';
+const PANEL_TEXT_COLOR = '#1C1917';
+const CAMERA_DISTANCE = 4;
 
 export default function NotePanel({
   ownerLabel,
@@ -49,8 +50,16 @@ export default function NotePanel({
     };
   }, [panelGeometry, edgesGeometry]);
 
+  const _forward = useMemo(() => new THREE.Vector3(), []);
+
   useFrame(() => {
     if (!groupRef.current) return;
+    // Always render directly in front of the camera
+    camera.getWorldDirection(_forward);
+    groupRef.current.position
+      .copy(camera.position)
+      .addScaledVector(_forward, CAMERA_DISTANCE)
+      .addScaledVector(camera.up, 0.3);
     groupRef.current.quaternion.copy(camera.quaternion);
   });
 
@@ -81,7 +90,7 @@ export default function NotePanel({
 
       {/* Header label */}
       <Text
-        color={TEXT_COLOR}
+        color={PANEL_TEXT_COLOR}
         fontSize={TEXT_ROW_SIZE}
         position={[-PANEL_WIDTH / 2 + NOTE_PANEL_PADDING, headerY, PANEL_DEPTH / 2 + 0.012]}
         anchorX="left"
@@ -94,7 +103,7 @@ export default function NotePanel({
 
       {/* Body text */}
       <Text
-        color={TEXT_COLOR}
+        color={PANEL_TEXT_COLOR}
         fontSize={TEXT_BADGE_SIZE * 1.2}
         position={[-PANEL_WIDTH / 2 + NOTE_PANEL_PADDING * 2, bodyTextY, PANEL_DEPTH / 2 + 0.012]}
         anchorX="left"
@@ -108,10 +117,10 @@ export default function NotePanel({
       <group position={[closeX, closeY, PANEL_DEPTH / 2 + 0.002]}>
         <mesh onClick={onClose}>
           <boxGeometry args={[CLOSE_BTN_SIZE, CLOSE_BTN_SIZE, 0.002]} />
-          <meshBasicMaterial color={HEADER_COLOR} transparent opacity={0.9} />
+          <meshBasicMaterial color={PANEL_TEXT_COLOR} transparent opacity={0.8} />
         </mesh>
         <Text
-          color={TEXT_COLOR}
+          color={PANEL_BG_COLOR}
           fontSize={TEXT_ROW_SIZE}
           anchorX="center"
           anchorY="middle"
