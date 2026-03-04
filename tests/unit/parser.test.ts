@@ -163,4 +163,40 @@ describe('parseDatabaseSchema', () => {
     expect(schema.tables).toHaveLength(1);
     expect(schema.tables[0].name).toBe('products');
   });
+
+  it('extracts table group names when TableGroup is present', () => {
+    const dbml = `
+      Table users {
+        id integer [pk]
+      }
+
+      Table posts {
+        id integer [pk]
+        user_id integer [ref: > users.id]
+      }
+
+      TableGroup core_domain {
+        users
+        posts
+      }
+    `;
+
+    const schema = parseDatabaseSchema(dbml);
+    const users = schema.tables.find((table) => table.name === 'users');
+    const posts = schema.tables.find((table) => table.name === 'posts');
+
+    expect(users?.tableGroup).toBe('core_domain');
+    expect(posts?.tableGroup).toBe('core_domain');
+  });
+
+  it('keeps tableGroup undefined when no table group is set', () => {
+    const dbml = `
+      Table users {
+        id integer [pk]
+      }
+    `;
+    const schema = parseDatabaseSchema(dbml);
+    const users = schema.tables.find((table) => table.name === 'users');
+    expect(users?.tableGroup).toBeUndefined();
+  });
 });

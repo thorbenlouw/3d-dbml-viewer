@@ -13,6 +13,7 @@ export interface ParsedTable {
   name: string;
   columns: ParsedColumn[];
   note?: string;
+  tableGroup?: string;
 }
 
 export interface ParsedRef {
@@ -52,13 +53,12 @@ export interface TableCardNode extends SimulationNode {
   table: ParsedTable;
 }
 
-export interface ActiveNote {
+export interface HoverContext {
   tableId: string;
+  tableName: string;
+  tableGroup?: string;
   columnName?: string;
-  noteText: string;
-  ownerLabel: string;
-  anchorWorldPosition: [number, number, number];
-  cardPosition: [number, number, number];
+  note?: string;
 }
 
 export interface RelationshipLinkModel {

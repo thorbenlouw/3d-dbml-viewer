@@ -117,6 +117,9 @@ unit, not its private internals.
 can only verify DOM structure; it cannot confirm that 3D boxes are actually
 visible on screen. A blank white canvas will pass the headless tests.
 
+For agent verification loops, run Playwright in headed mode:
+`pnpm test:e2e --headed`.
+
 Whenever you implement or modify renderer components (`src/renderer/`), you
 **must** verify visual output using the Playwright MCP server:
 
@@ -144,7 +147,8 @@ background was only caught by manual inspection, not by the automated tests.
 pnpm test              # unit + integration (watch mode in dev)
 pnpm test:run          # unit + integration (CI, single pass)
 pnpm test:coverage     # with coverage report
-pnpm test:e2e          # Playwright browser tests
+pnpm test:e2e --headed     # Playwright browser tests for local/agent verification loops
+pnpm test:e2e              # Playwright browser tests (default; typically CI/headless)
 ```
 
 ---

@@ -38,12 +38,19 @@ export const TEXT_COLOR = '#F3FAFF';
 export const BADGE_BG_COLOR = '#2F9FE3';
 export const BADGE_TEXT_COLOR = '#F8FDFF';
 export const LINK_COLOR = '#92D8FF';
+export const LINK_HIGHLIGHT_COLOR = '#facc15';
+export const COLUMN_HIGHLIGHT_COLOR = '#facc15';
 export const LINK_TUBE_RADIUS = 0.012;
 export const LINK_TUBE_RADIAL_SEGMENTS = 8;
 
+export const PANEL_BG_COLOR = 'rgba(15, 23, 42, 0.9)';
+export const PANEL_TEXT_COLOR = '#F8FAFC';
+export const PANEL_ACCENT_COLOR = '#facc15';
+export const PANEL_BORDER_COLOR = 'rgba(148, 163, 184, 0.35)';
+
 export const NOTE_ICON_CHAR = '✎';
 export const NOTE_ICON_SIZE = 0.065;
-export const NOTE_HIGHLIGHT_COLOR = '#f59e0b';
+export const NOTE_HIGHLIGHT_COLOR = PANEL_ACCENT_COLOR;
 export const NOTE_PANEL_MAX_WIDTH = 3.0;
 export const NOTE_PANEL_MAX_HEIGHT = 2.5;
 export const NOTE_PANEL_PADDING = 0.12;

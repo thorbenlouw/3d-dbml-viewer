@@ -16,6 +16,9 @@ interface DbmlTable {
   name: string;
   note?: string;
   fields: DbmlField[];
+  group?: {
+    name?: unknown;
+  } | null;
 }
 
 interface DbmlRefEndpoint {
@@ -100,6 +103,13 @@ function mapRefs(schemas: DbmlSchema[]): ParsedRef[] {
   );
 }
 
+function getTableGroupName(table: DbmlTable): string | undefined {
+  const rawName = table.group?.name;
+  if (typeof rawName !== 'string') return undefined;
+  const normalized = rawName.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export function parseDatabaseSchema(dbml: string): ParsedSchema {
   let database: DbmlDatabase;
   try {
@@ -120,6 +130,7 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
         name: table.name,
         columns: mapColumns(table, foreignKeys),
         note: rawTableNote !== undefined && rawTableNote.length > 0 ? rawTableNote : undefined,
+        tableGroup: getTableGroupName(table),
       };
     }),
   );

@@ -14,9 +14,11 @@ test('3D scene renders with canvas, Reset View button, and no errors', async ({ 
   const canvas = page.locator('canvas');
   const fallback = page.getByText('WebGL is unavailable in this browser session.');
   const resetBtn = page.locator('[aria-label="Reset camera to overview"]');
+  const navPanel = page.getByTestId('navigation-panel');
 
   // Wait for either a WebGL canvas render path or explicit fallback UI.
   await expect(canvas.or(fallback)).toBeVisible({ timeout: 10000 });
+  await expect(navPanel).toBeVisible();
   await page.waitForTimeout(1000);
 
   if (await fallback.isVisible()) {
@@ -50,8 +52,10 @@ test('field and table notes — canvas loads without errors', async ({ page }) =
 
   const canvas = page.locator('canvas');
   const fallback = page.getByText('WebGL is unavailable in this browser session.');
+  const navPanel = page.getByTestId('navigation-panel');
 
   await expect(canvas.or(fallback)).toBeVisible({ timeout: 10000 });
+  await expect(navPanel).toBeVisible();
   await page.waitForTimeout(1000);
 
   expect(pageErrors).toHaveLength(0);

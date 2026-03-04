@@ -11,21 +11,21 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type {
-  ActiveNote,
+  HoverContext,
   ParsedSchema,
   RelationshipLinkModel,
   SimulationNode,
   TableCardNode,
 } from '@/types';
-import { NOTE_PANEL_OFFSET, RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
+import { PANEL_ACCENT_COLOR, RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
-import NotePanel from './NotePanel';
-import NoteConnector from './NoteConnector';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import ResetViewButton from './ResetViewButton';
 import { useForceSimulation } from '@/layout/useForceSimulation';
 import { useDragCard } from './useDragCard';
+import NavigationPanel from './NavigationPanel';
+import { getReferencedTablesForTable, shouldHighlightRelationship } from './hoverContext';
 
 interface SceneProps {
   schema: ParsedSchema;
@@ -53,7 +53,8 @@ interface CameraFrame {
 interface DraggableTableCardProps {
   node: TableCardNode;
   highlightedColumn?: string | '__table__';
-  onNoteClick?: (note: ActiveNote) => void;
+  onTableHoverChange?: (value: HoverContext | null) => void;
+  onColumnHoverChange?: (value: HoverContext | null) => void;
   isRearrangeMode: boolean;
   onDragStart: (id: string, pos: THREE.Vector3) => void;
   onDragMove: (id: string, delta: THREE.Vector3) => void;
@@ -170,7 +171,8 @@ function computeCameraFrameFromPoints(points: THREE.Vector3[], fovDeg: number): 
 function DraggableTableCard({
   node,
   highlightedColumn,
-  onNoteClick,
+  onTableHoverChange,
+  onColumnHoverChange,
   isRearrangeMode,
   onDragStart,
   onDragMove,
@@ -196,7 +198,8 @@ function DraggableTableCard({
     <TableCard
       node={node}
       highlightedColumn={highlightedColumn}
-      onNoteClick={onNoteClick}
+      onTableHoverChange={onTableHoverChange}
+      onColumnHoverChange={onColumnHoverChange}
       dragHandlers={isRearrangeMode ? dragHandlers : undefined}
     />
   );
@@ -208,11 +211,10 @@ export default function Scene({ schema }: SceneProps): ReactElement {
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
   }, []);
 
-  const [activeNote, setActiveNote] = useState<ActiveNote | null>(null);
   const [isRearrangeMode, setIsRearrangeMode] = useState(false);
+  const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
-  const isDraggingRef = useRef(false);
 
   const { nodes: simNodes, setPin, nudge } = useForceSimulation(schema);
 
@@ -271,6 +273,11 @@ export default function Scene({ schema }: SceneProps): ReactElement {
     startTime: 0,
   });
 
+  const referencedTables = useMemo(() => {
+    if (!hoverContext) return [];
+    return getReferencedTablesForTable(schema, hoverContext.tableId);
+  }, [hoverContext, schema]);
+
   const handleResetView = useCallback((): void => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -287,7 +294,6 @@ export default function Scene({ schema }: SceneProps): ReactElement {
   const handleDragStart = useCallback(
     (id: string, pos: THREE.Vector3) => {
       setPin(id, { x: pos.x, y: pos.y, z: pos.z });
-      isDraggingRef.current = true;
       if (controlsRef.current) controlsRef.current.enabled = false;
     },
     [setPin],
@@ -307,7 +313,6 @@ export default function Scene({ schema }: SceneProps): ReactElement {
       } else {
         setPin(id, { x: pos.x, y: pos.y, z: pos.z });
       }
-      isDraggingRef.current = false;
       if (controlsRef.current) controlsRef.current.enabled = true;
     },
     [setPin],
@@ -315,30 +320,33 @@ export default function Scene({ schema }: SceneProps): ReactElement {
 
   if (hasWebGL === false) {
     return (
-      <div
-        role="status"
-        aria-live="polite"
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'grid',
-          placeItems: 'center',
-          background: SCENE_BG_COLOR,
-          color: '#E6ECFF',
-          fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
-          padding: '2rem',
-          textAlign: 'center',
-        }}
-      >
-        <div>
-          <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
-            WebGL is unavailable in this browser session.
-          </p>
-          <p style={{ opacity: 0.85 }}>
-            3D rendering requires GPU/WebGL support. Try running in a regular desktop browser with
-            hardware acceleration enabled.
-          </p>
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'grid',
+            placeItems: 'center',
+            background: SCENE_BG_COLOR,
+            color: '#E6ECFF',
+            fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+            padding: '2rem',
+            textAlign: 'center',
+          }}
+        >
+          <div>
+            <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
+              WebGL is unavailable in this browser session.
+            </p>
+            <p style={{ opacity: 0.85 }}>
+              3D rendering requires GPU/WebGL support. Try running in a regular desktop browser with
+              hardware acceleration enabled.
+            </p>
+          </div>
         </div>
+        <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />
       </div>
     );
   }
@@ -378,19 +386,23 @@ export default function Scene({ schema }: SceneProps): ReactElement {
               targetFieldName={link.targetFieldNames[0] ?? null}
               linkIndex={link.linkIndex}
               parallelCount={link.parallelCount}
+              isHighlighted={shouldHighlightRelationship(hoverContext, link)}
             />
           );
         })}
 
         {cardNodes.map((node) => {
           const highlightedColumn =
-            activeNote?.tableId === node.id ? (activeNote.columnName ?? '__table__') : undefined;
+            hoverContext?.tableId === node.id
+              ? (hoverContext.columnName ?? '__table__')
+              : undefined;
           return (
             <DraggableTableCard
               key={node.id}
               node={node}
               highlightedColumn={highlightedColumn}
-              onNoteClick={isRearrangeMode ? undefined : setActiveNote}
+              onTableHoverChange={setHoverContext}
+              onColumnHoverChange={setHoverContext}
               isRearrangeMode={isRearrangeMode}
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
@@ -398,28 +410,10 @@ export default function Scene({ schema }: SceneProps): ReactElement {
             />
           );
         })}
-
-        {activeNote !== null &&
-          (() => {
-            const [ax, ay, az] = activeNote.anchorWorldPosition;
-            const panelPosition: [number, number, number] = [
-              ax + NOTE_PANEL_OFFSET * 0.6,
-              ay + NOTE_PANEL_OFFSET,
-              az,
-            ];
-            return (
-              <>
-                <NotePanel
-                  ownerLabel={activeNote.ownerLabel}
-                  noteText={activeNote.noteText}
-                  position={panelPosition}
-                  onClose={() => setActiveNote(null)}
-                />
-                <NoteConnector from={activeNote.anchorWorldPosition} to={panelPosition} />
-              </>
-            );
-          })()}
       </Canvas>
+
+      <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />
+
       <ResetViewButton onClick={handleResetView} />
       <button
         type="button"
@@ -427,7 +421,7 @@ export default function Scene({ schema }: SceneProps): ReactElement {
           setIsRearrangeMode((current) => {
             const next = !current;
             if (next) {
-              setActiveNote(null);
+              setHoverContext(null);
             }
             return next;
           })
@@ -437,7 +431,7 @@ export default function Scene({ schema }: SceneProps): ReactElement {
           position: 'fixed',
           bottom: '1rem',
           right: '8.2rem',
-          backgroundColor: isRearrangeMode ? '#F59E0B' : '#334155',
+          backgroundColor: isRearrangeMode ? PANEL_ACCENT_COLOR : '#334155',
           color: '#ffffff',
           fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
           padding: '0.5rem 1rem',
@@ -446,6 +440,7 @@ export default function Scene({ schema }: SceneProps): ReactElement {
           cursor: 'pointer',
           fontSize: '0.875rem',
           fontWeight: 500,
+          zIndex: 40,
         }}
       >
         {isRearrangeMode ? 'Re-arrange Mode' : 'Navigate Mode'}

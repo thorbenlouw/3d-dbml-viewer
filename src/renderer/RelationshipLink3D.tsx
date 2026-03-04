@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { TableCardNode } from '@/types';
 import {
+  LINK_HIGHLIGHT_COLOR,
   LINK_COLOR,
   LINK_SEGMENTS,
   LINK_TUBE_RADIAL_SEGMENTS,
@@ -18,6 +19,7 @@ interface RelationshipLink3DProps {
   targetFieldName: string | null;
   linkIndex: number;
   parallelCount: number;
+  isHighlighted?: boolean;
 }
 
 function buildTubeGeometry(
@@ -50,6 +52,7 @@ export default function RelationshipLink3D({
   targetFieldName,
   linkIndex,
   parallelCount,
+  isHighlighted = false,
 }: RelationshipLink3DProps): ReactElement {
   const meshRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
@@ -102,7 +105,11 @@ export default function RelationshipLink3D({
 
   return (
     <mesh ref={meshRef} geometry={initialGeometry}>
-      <meshBasicMaterial color={LINK_COLOR} transparent opacity={0.8} />
+      <meshBasicMaterial
+        color={isHighlighted ? LINK_HIGHLIGHT_COLOR : LINK_COLOR}
+        transparent
+        opacity={0.8}
+      />
     </mesh>
   );
 }
