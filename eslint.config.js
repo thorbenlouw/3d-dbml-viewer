@@ -48,6 +48,26 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
       ...jsxA11yPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
+      // Three.js / React Three Fiber JSX attributes are not standard HTML props
+      'react/no-unknown-property': [
+        'error',
+        {
+          ignore: [
+            'args',
+            'attach',
+            'transparent',
+            'geometry',
+            'position',
+            'rotation',
+            'scale',
+            'intensity',
+            'castShadow',
+            'receiveShadow',
+            'object',
+            'dispose',
+          ],
+        },
+      ],
     },
     settings: {
       react: { version: 'detect' },
