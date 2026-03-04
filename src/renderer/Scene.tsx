@@ -54,6 +54,7 @@ interface DraggableTableCardProps {
   node: TableCardNode;
   highlightedColumn?: string | '__table__';
   onNoteClick?: (note: ActiveNote) => void;
+  isRearrangeMode: boolean;
   onDragStart: (id: string, pos: THREE.Vector3) => void;
   onDragMove: (id: string, delta: THREE.Vector3) => void;
   onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
@@ -170,6 +171,7 @@ function DraggableTableCard({
   node,
   highlightedColumn,
   onNoteClick,
+  isRearrangeMode,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -195,8 +197,7 @@ function DraggableTableCard({
       node={node}
       highlightedColumn={highlightedColumn}
       onNoteClick={onNoteClick}
-      dragHandlers={dragHandlers}
-      isPinned={node.isPinned}
+      dragHandlers={isRearrangeMode ? dragHandlers : undefined}
     />
   );
 }
@@ -208,6 +209,7 @@ export default function Scene({ schema }: SceneProps): ReactElement {
   }, []);
 
   const [activeNote, setActiveNote] = useState<ActiveNote | null>(null);
+  const [isRearrangeMode, setIsRearrangeMode] = useState(false);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
   const isDraggingRef = useRef(false);
@@ -388,7 +390,8 @@ export default function Scene({ schema }: SceneProps): ReactElement {
               key={node.id}
               node={node}
               highlightedColumn={highlightedColumn}
-              onNoteClick={setActiveNote}
+              onNoteClick={isRearrangeMode ? undefined : setActiveNote}
+              isRearrangeMode={isRearrangeMode}
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
@@ -418,6 +421,35 @@ export default function Scene({ schema }: SceneProps): ReactElement {
           })()}
       </Canvas>
       <ResetViewButton onClick={handleResetView} />
+      <button
+        type="button"
+        onClick={() =>
+          setIsRearrangeMode((current) => {
+            const next = !current;
+            if (next) {
+              setActiveNote(null);
+            }
+            return next;
+          })
+        }
+        aria-label={isRearrangeMode ? 'Switch to Navigate mode' : 'Switch to Re-arrange mode'}
+        style={{
+          position: 'fixed',
+          bottom: '1rem',
+          right: '8.2rem',
+          backgroundColor: isRearrangeMode ? '#F59E0B' : '#334155',
+          color: '#ffffff',
+          fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+          padding: '0.5rem 1rem',
+          borderRadius: '0.375rem',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: 500,
+        }}
+      >
+        {isRearrangeMode ? 'Re-arrange Mode' : 'Navigate Mode'}
+      </button>
     </div>
   );
 }

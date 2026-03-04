@@ -20,6 +20,8 @@ export function useDragCard(params: {
   onPointerDown: (e: ThreeEvent<PointerEvent>) => void;
   onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
   onPointerUp: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
   onDoubleClick: (e: ThreeEvent<MouseEvent>) => void;
 } {
   const { nodeId } = params;
@@ -115,5 +117,22 @@ export function useDragCard(params: {
     [nodeId],
   );
 
-  return { onPointerDown, onPointerMove, onPointerUp, onDoubleClick };
+  const onPointerEnter = useCallback(() => {
+    if (isDraggingRef.current) return;
+    glRef.current.domElement.style.cursor = 'grab';
+  }, []);
+
+  const onPointerLeave = useCallback(() => {
+    if (isDraggingRef.current) return;
+    glRef.current.domElement.style.cursor = 'default';
+  }, []);
+
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerEnter,
+    onPointerLeave,
+    onDoubleClick,
+  };
 }
