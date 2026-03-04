@@ -21,9 +21,22 @@ test('3D scene renders with canvas, Reset View button, and no errors', async ({ 
   expect(box!.width).toBeGreaterThan(0);
   expect(box!.height).toBeGreaterThan(0);
 
-  // Assert Reset View button is present
+  // Assert Reset View button is present and correctly labelled
   const resetBtn = page.locator('[aria-label="Reset camera to overview"]');
   await expect(resetBtn).toBeVisible();
+  await expect(resetBtn).toHaveText('Reset View');
+
+  // Allow a moment for the 3D scene to render its first frame
+  await page.waitForTimeout(1000);
+
+  // Full-page screenshot check: verify the page is not blank.
+  // Headless WebGL renders to the GPU-less canvas (which stays blank),
+  // but the styled Reset View button always contributes non-white pixels,
+  // so a non-trivially-sized PNG proves the DOM rendered correctly.
+  // NOTE: pixel-level 3D content verification requires --headed mode or
+  // a Playwright MCP session against a real GPU-enabled browser.
+  const screenshot = await page.screenshot();
+  expect(screenshot.byteLength).toBeGreaterThan(5000);
 
   // Click Reset View and assert no errors
   await resetBtn.click();

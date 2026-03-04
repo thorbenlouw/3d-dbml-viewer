@@ -75,9 +75,11 @@ function computeResetPosition(nodes: LayoutNode[]): THREE.Vector3 {
 }
 
 export default function Scene({ nodes }: SceneProps): ReactElement {
+  const initialCameraPos = computeResetPosition(nodes);
+
   const tweenStateRef = useRef<CameraTweenState>({
     active: false,
-    target: new THREE.Vector3(0, 0, 20),
+    target: initialCameraPos,
     startTime: 0,
   });
 
@@ -92,7 +94,10 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Canvas style={{ width: '100%', height: '100%' }} camera={{ position: [0, 0, 20], fov: 60 }}>
+      <Canvas
+        style={{ width: '100%', height: '100%' }}
+        camera={{ position: [initialCameraPos.x, initialCameraPos.y, initialCameraPos.z], fov: 60 }}
+      >
         <color attach="background" args={['#FFFFFF']} />
         <OrbitControls enableDamping dampingFactor={0.1} />
         <CameraController tweenStateRef={tweenStateRef} />
