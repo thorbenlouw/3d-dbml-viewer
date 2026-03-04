@@ -97,6 +97,7 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
       <Canvas
         style={{ width: '100%', height: '100%' }}
         camera={{ position: [initialCameraPos.x, initialCameraPos.y, initialCameraPos.z], fov: 60 }}
+        gl={{ preserveDrawingBuffer: true }}
       >
         <color attach="background" args={['#FFFFFF']} />
         <OrbitControls enableDamping dampingFactor={0.1} />
