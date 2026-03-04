@@ -170,3 +170,13 @@ pnpm test:e2e          # Playwright browser tests
   and reusable.
 - Do not delete or alter `tests/fixtures/` files without explicit instruction.
 - Do not skip type generation steps after modifying shared types.
+
+# Writing TODOs and PRDs
+
+Write specs for each feature in its own `features/<feature-name>/PRD.md` file using best practices for PRDs.
+
+PRDs are subsequently broken down into detailed tasks in a TODO.md file in the same directory when requested by the user.
+
+Each TODO.md file should finish with a statement that when all tasks are complete the agent should output <promise>DONE</promise>.
+
+This is because we use the "Ralph Wiggum" plugin and agent automation style to repeatedly run agent sessions until a whole TODO is complete, and the agent looks for the <promise>DONE</promise> statement to know when to stop iterating .
