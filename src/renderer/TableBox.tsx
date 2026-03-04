@@ -48,7 +48,6 @@ export default function TableBox({ node }: TableBoxProps): ReactElement {
         <lineBasicMaterial color="#1C95D3" />
       </lineSegments>
       <Text
-        font="/fonts/Lexend-Medium.woff2"
         color="#FFFFFF"
         fontSize={0.18}
         position={[0, 0, BOX_DEPTH / 2 + 0.01]}
