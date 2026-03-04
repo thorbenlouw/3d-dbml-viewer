@@ -1,9 +1,9 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as THREE from 'three';
-import type { ActiveNote, ParsedColumn, TableCardNode } from '@/types';
+import type { HoverContext, ParsedColumn, TableCardNode } from '@/types';
 import {
   BADGE_BG_COLOR,
   BADGE_GAP,
@@ -20,11 +20,12 @@ import {
   CARD_ROW_ODD_COLOR,
   CARD_ROW_HEIGHT,
   CARD_VERTICAL_PADDING,
+  COLUMN_HIGHLIGHT_COLOR,
   DISTANCE_FAR,
   DISTANCE_NEAR,
-  NOTE_HIGHLIGHT_COLOR,
   NOTE_ICON_CHAR,
   NOTE_ICON_SIZE,
+  NOTE_HIGHLIGHT_COLOR,
   OPACITY_FAR,
   OPACITY_NEAR,
   TEXT_BADGE_SIZE,
@@ -46,7 +47,8 @@ interface DragHandlers {
 interface TableCardProps {
   node: TableCardNode;
   highlightedColumn?: string | '__table__';
-  onNoteClick?: (note: ActiveNote) => void;
+  onTableHoverChange?: (value: HoverContext | null) => void;
+  onColumnHoverChange?: (value: HoverContext | null) => void;
   dragHandlers?: DragHandlers;
 }
 
@@ -54,6 +56,8 @@ interface FieldBadge {
   label: string;
   active: boolean;
 }
+
+const HIGHLIGHT_TEXT_COLOR = '#1f2937';
 
 function truncate(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value;
@@ -70,81 +74,43 @@ function getBadges(column: ParsedColumn): FieldBadge[] {
   ];
 }
 
-function IconHoverBorder({ width, height }: { width: number; height: number }): ReactElement {
-  const thickness = 0.012;
-  return (
-    <group position={[0, 0, 0.002]}>
-      <mesh position={[0, height / 2, 0]}>
-        <boxGeometry args={[width, thickness, 0.006]} />
-        <meshBasicMaterial color={NOTE_HIGHLIGHT_COLOR} transparent opacity={0.95} />
-      </mesh>
-      <mesh position={[0, -height / 2, 0]}>
-        <boxGeometry args={[width, thickness, 0.006]} />
-        <meshBasicMaterial color={NOTE_HIGHLIGHT_COLOR} transparent opacity={0.95} />
-      </mesh>
-      <mesh position={[width / 2, 0, 0]}>
-        <boxGeometry args={[thickness, height, 0.006]} />
-        <meshBasicMaterial color={NOTE_HIGHLIGHT_COLOR} transparent opacity={0.95} />
-      </mesh>
-      <mesh position={[-width / 2, 0, 0]}>
-        <boxGeometry args={[thickness, height, 0.006]} />
-        <meshBasicMaterial color={NOTE_HIGHLIGHT_COLOR} transparent opacity={0.95} />
-      </mesh>
-    </group>
-  );
+function toTableHoverContext(node: TableCardNode): HoverContext {
+  return {
+    tableId: node.id,
+    tableName: node.table.name,
+    tableGroup: node.table.tableGroup,
+    note: node.table.note,
+  };
+}
+
+function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverContext {
+  return {
+    tableId: node.id,
+    tableName: node.table.name,
+    tableGroup: node.table.tableGroup,
+    columnName: column.name,
+    note: column.note ?? node.table.note,
+  };
 }
 
 export default function TableCard({
   node,
   highlightedColumn,
-  onNoteClick,
+  onTableHoverChange,
+  onColumnHoverChange,
   dragHandlers,
 }: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const dragHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const rowHitMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const { camera } = useThree();
-  const [hoveredNoteKey, setHoveredNoteKey] = useState<string | null>(null);
 
   const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
 
-  const handleTableNoteClick = useCallback(() => {
-    if (!onNoteClick || !node.table.note) return;
-    const anchorPos: [number, number, number] = [
-      node.x + dimensions.width / 2,
-      node.y + dimensions.height / 2 - CARD_HEADER_HEIGHT / 2,
-      node.z + dimensions.depth / 2,
-    ];
-    onNoteClick({
-      tableId: node.id,
-      columnName: undefined,
-      noteText: node.table.note,
-      ownerLabel: `Table: ${node.table.name}`,
-      anchorWorldPosition: anchorPos,
-      cardPosition: [node.x, node.y, node.z],
-    });
-  }, [onNoteClick, node, dimensions]);
-
-  const makeColumnNoteClickHandler = useCallback(
-    (column: ParsedColumn, rowY: number) => () => {
-      if (!onNoteClick || !column.note) return;
-      const anchorPos: [number, number, number] = [
-        node.x + dimensions.width / 2,
-        node.y + rowY,
-        node.z + dimensions.depth / 2,
-      ];
-      onNoteClick({
-        tableId: node.id,
-        columnName: column.name,
-        noteText: column.note,
-        ownerLabel: `${node.table.name}.${column.name}`,
-        anchorWorldPosition: anchorPos,
-        cardPosition: [node.x, node.y, node.z],
-      });
-    },
-    [onNoteClick, node, dimensions],
-  );
   const headerY = dimensions.height / 2 - CARD_HEADER_HEIGHT / 2;
   const bodyHeight = dimensions.height - CARD_HEADER_HEIGHT;
   const bodyY = -dimensions.height / 2 + bodyHeight / 2;
@@ -156,6 +122,14 @@ export default function TableCard({
     [dimensions.width, dimensions.height, dimensions.depth],
   );
   const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(cardGeometry), [cardGeometry]);
+
+  useEffect(() => {
+    if (dragHitMaterialRef.current) dragHitMaterialRef.current.depthWrite = false;
+    if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
+    for (const material of rowHitMaterialRefs.current) {
+      if (material) material.depthWrite = false;
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -197,7 +171,7 @@ export default function TableCard({
         <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, dimensions.depth]} />
         <meshBasicMaterial
           ref={headerMaterialRef}
-          color={highlightedColumn === '__table__' ? NOTE_HIGHLIGHT_COLOR : CARD_HEADER_COLOR}
+          color={highlightedColumn === '__table__' ? COLUMN_HIGHLIGHT_COLOR : CARD_HEADER_COLOR}
           transparent
           opacity={OPACITY_FAR}
         />
@@ -218,12 +192,29 @@ export default function TableCard({
           onPointerLeave={dragHandlers.onPointerLeave}
         >
           <boxGeometry args={[dimensions.width, dimensions.height, 0.01]} />
-          <meshBasicMaterial transparent opacity={0} />
+          <meshBasicMaterial ref={dragHitMaterialRef} transparent opacity={0} />
+        </mesh>
+      )}
+
+      {!dragHandlers && (
+        <mesh
+          position={[0, headerY, dimensions.depth / 2 + 0.014]}
+          onPointerEnter={(event) => {
+            event.stopPropagation();
+            onTableHoverChange?.(toTableHoverContext(node));
+          }}
+          onPointerLeave={(event) => {
+            event.stopPropagation();
+            onTableHoverChange?.(null);
+          }}
+        >
+          <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
+          <meshBasicMaterial ref={headerHitMaterialRef} transparent opacity={0} />
         </mesh>
       )}
 
       <Text
-        color={TEXT_COLOR}
+        color={highlightedColumn === '__table__' ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
         fontSize={TEXT_HEADER_SIZE}
         position={[0, headerY, dimensions.depth / 2 + 0.012]}
         anchorX="center"
@@ -234,44 +225,19 @@ export default function TableCard({
       </Text>
 
       {node.table.note && (
-        <group
+        <Text
+          color={NOTE_HIGHLIGHT_COLOR}
+          fontSize={NOTE_ICON_SIZE}
+          anchorX="center"
+          anchorY="middle"
           position={[
             dimensions.width / 2 - CARD_HORIZONTAL_PADDING,
             headerY,
-            dimensions.depth / 2 + 0.015,
+            dimensions.depth / 2 + 0.02,
           ]}
         >
-          <mesh
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTableNoteClick();
-            }}
-            onPointerEnter={(e) => {
-              e.stopPropagation();
-              setHoveredNoteKey('__table__');
-            }}
-            onPointerLeave={(e) => {
-              e.stopPropagation();
-              setHoveredNoteKey((current) => (current === '__table__' ? null : current));
-            }}
-            onDoubleClick={(e) => e.stopPropagation()}
-          >
-            <boxGeometry args={[0.18, CARD_HEADER_HEIGHT * 0.8, 0.01]} />
-            <meshBasicMaterial transparent opacity={0} />
-          </mesh>
-          {hoveredNoteKey === '__table__' && (
-            <IconHoverBorder width={0.22} height={CARD_HEADER_HEIGHT * 0.9} />
-          )}
-          <Text
-            color={NOTE_HIGHLIGHT_COLOR}
-            fontSize={NOTE_ICON_SIZE}
-            anchorX="center"
-            anchorY="middle"
-            position={[0, 0, 0.006]}
-          >
-            {NOTE_ICON_CHAR}
-          </Text>
-        </group>
+          {NOTE_ICON_CHAR}
+        </Text>
       )}
 
       {node.table.columns.map((column, index) => {
@@ -288,12 +254,35 @@ export default function TableCard({
 
         return (
           <group key={`${node.id}-${column.name}-${index}`}>
+            {!dragHandlers && (
+              <mesh
+                position={[0, rowY, dimensions.depth / 2 + 0.015]}
+                onPointerEnter={(event) => {
+                  event.stopPropagation();
+                  onColumnHoverChange?.(toColumnHoverContext(node, column));
+                }}
+                onPointerLeave={(event) => {
+                  event.stopPropagation();
+                  onColumnHoverChange?.(null);
+                }}
+              >
+                <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, 0.015]} />
+                <meshBasicMaterial
+                  ref={(material) => {
+                    rowHitMaterialRefs.current[index] = material;
+                  }}
+                  transparent
+                  opacity={0}
+                />
+              </mesh>
+            )}
+
             <mesh position={[0, rowY, dimensions.depth / 2 - rowSliceDepth / 2 + 0.001]}>
               <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, rowSliceDepth]} />
               <meshBasicMaterial
                 color={
                   isHighlighted
-                    ? NOTE_HIGHLIGHT_COLOR
+                    ? COLUMN_HIGHLIGHT_COLOR
                     : index % 2 === 0
                       ? CARD_ROW_EVEN_COLOR
                       : CARD_ROW_ODD_COLOR
@@ -302,8 +291,9 @@ export default function TableCard({
             </mesh>
 
             <Text
-              color={TEXT_COLOR}
+              color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
+              fontWeight={column.isPrimaryKey ? 700 : 400}
               position={[leftX, rowY, dimensions.depth / 2 + 0.02]}
               anchorX="left"
               anchorY="middle"
@@ -313,7 +303,7 @@ export default function TableCard({
             </Text>
 
             <Text
-              color={TEXT_COLOR}
+              color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
               position={[
                 leftX + dimensions.width * 0.42 + CARD_COLUMN_GAP,
@@ -353,45 +343,20 @@ export default function TableCard({
             })}
 
             {column.note && (
-              <group
+              <Text
+                color={NOTE_HIGHLIGHT_COLOR}
+                fontSize={NOTE_ICON_SIZE}
+                anchorX="center"
+                anchorY="middle"
                 position={[
                   badgeGroupRightX -
                     (badges.length > 0 ? badges.length * (BADGE_WIDTH + BADGE_GAP) + 0.1 : 0),
                   rowY,
-                  dimensions.depth / 2 + 0.015,
+                  dimensions.depth / 2 + 0.02,
                 ]}
               >
-                <mesh
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    makeColumnNoteClickHandler(column, rowY)();
-                  }}
-                  onPointerEnter={(e) => {
-                    e.stopPropagation();
-                    setHoveredNoteKey(column.name);
-                  }}
-                  onPointerLeave={(e) => {
-                    e.stopPropagation();
-                    setHoveredNoteKey((current) => (current === column.name ? null : current));
-                  }}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                >
-                  <boxGeometry args={[0.16, CARD_ROW_HEIGHT * 0.8, 0.01]} />
-                  <meshBasicMaterial transparent opacity={0} />
-                </mesh>
-                {hoveredNoteKey === column.name && (
-                  <IconHoverBorder width={0.2} height={CARD_ROW_HEIGHT * 0.9} />
-                )}
-                <Text
-                  color={NOTE_HIGHLIGHT_COLOR}
-                  fontSize={NOTE_ICON_SIZE}
-                  anchorX="center"
-                  anchorY="middle"
-                  position={[0, 0, 0.006]}
-                >
-                  {NOTE_ICON_CHAR}
-                </Text>
-              </group>
+                {NOTE_ICON_CHAR}
+              </Text>
             )}
           </group>
         );
