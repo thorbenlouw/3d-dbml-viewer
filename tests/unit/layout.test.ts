@@ -7,9 +7,9 @@ import type { ParsedSchema } from '@/types';
 const schema: ParsedSchema = parseDatabaseSchema(HARD_CODED_DBML);
 
 describe('computeLayout', () => {
-  it('returns 3 nodes for the 3-table schema', () => {
+  it('returns 8 nodes for the 8-table schema', () => {
     const nodes = computeLayout(schema);
-    expect(nodes).toHaveLength(3);
+    expect(nodes).toHaveLength(8);
   });
 
   it('all nodes have finite numeric x, y, z', () => {
@@ -47,6 +47,15 @@ describe('computeLayout', () => {
   it('nodes have id and name matching table data', () => {
     const nodes = computeLayout(schema);
     const names = nodes.map((n) => n.name).sort();
-    expect(names).toEqual(['follows', 'posts', 'users']);
+    expect(names).toEqual([
+      'dim_customer',
+      'dim_date',
+      'dim_employee',
+      'dim_product',
+      'dim_store',
+      'dim_supplier',
+      'fact_inventory',
+      'fact_sales',
+    ]);
   });
 });

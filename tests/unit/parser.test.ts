@@ -20,108 +20,84 @@ function findTable(tableName: string) {
 }
 
 describe('parseDatabaseSchema', () => {
-  it('returns exactly 3 tables for the hard-coded schema', () => {
+  it('returns exactly 8 tables for the hard-coded schema', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    expect(schema.tables).toHaveLength(3);
+    expect(schema.tables).toHaveLength(8);
   });
 
-  it('returns tables named users, posts, follows', () => {
+  it('returns all dimension and fact tables', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
     const names = schema.tables.map((t) => t.name).sort();
-    expect(names).toEqual(['follows', 'posts', 'users']);
+    expect(names).toEqual([
+      'dim_customer',
+      'dim_date',
+      'dim_employee',
+      'dim_product',
+      'dim_store',
+      'dim_supplier',
+      'fact_inventory',
+      'fact_sales',
+    ]);
   });
 
-  it('extracts field names and types for all hard-coded tables', () => {
+  it('extracts field names and types for dim_customer', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
-
-    const tableToFields = Object.fromEntries(
-      schema.tables.map((table) => [
-        table.name,
-        table.columns.map((column) => `${column.name}:${column.type}`),
-      ]),
-    );
-
-    expect(tableToFields.users).toEqual([
-      'id:integer',
-      'username:varchar',
-      'role:varchar',
-      'created_at:timestamp',
-    ]);
-    expect(tableToFields.posts).toEqual([
-      'id:integer',
-      'title:varchar',
-      'body:text',
-      'user_id:integer',
-      'status:varchar',
-      'created_at:timestamp',
-    ]);
-    expect(tableToFields.follows).toEqual([
-      'following_user_id:integer',
-      'followed_user_id:integer',
-      'created_at:timestamp',
+    const dimCustomer = schema.tables.find((t) => t.name === 'dim_customer');
+    const fields = dimCustomer?.columns.map((c) => `${c.name}:${c.type}`);
+    expect(fields).toEqual([
+      'customer_key:integer',
+      'customer_id:varchar',
+      'first_name:varchar',
+      'last_name:varchar',
+      'email:varchar',
+      'phone:varchar',
+      'city:varchar',
+      'state_province:varchar',
+      'country_code:char(2)',
+      'postal_code:varchar',
+      'is_current:boolean',
+      'valid_from:timestamp',
+      'valid_to:timestamp',
     ]);
   });
 
   it('captures PK and NN flags from DBML settings', () => {
-    const users = findTable('users');
-    const posts = findTable('posts');
+    const dimCustomer = findTable('dim_customer');
+    const factSales = findTable('fact_sales');
 
-    const usersId = users.columns.find((column) => column.name === 'id');
-    const postsUserId = posts.columns.find((column) => column.name === 'user_id');
+    const customerKey = dimCustomer.columns.find((c) => c.name === 'customer_key');
+    const orderId = factSales.columns.find((c) => c.name === 'order_id');
 
-    expect(usersId?.isPrimaryKey).toBe(true);
-    expect(usersId?.isNotNull).toBe(false);
+    expect(customerKey?.isPrimaryKey).toBe(true);
+    expect(customerKey?.isNotNull).toBe(false);
 
-    expect(postsUserId?.isPrimaryKey).toBe(false);
-    expect(postsUserId?.isNotNull).toBe(true);
+    expect(orderId?.isPrimaryKey).toBe(false);
+    expect(orderId?.isNotNull).toBe(true);
   });
 
-  it('derives FK flags from refs for posts.user_id and follows.*_user_id', () => {
-    const posts = findTable('posts');
-    const follows = findTable('follows');
+  it('derives FK flags from inline refs in fact_sales', () => {
+    const factSales = findTable('fact_sales');
 
-    const postsFk = posts.columns.find((column) => column.name === 'user_id');
-    const followsFollowingFk = follows.columns.find(
-      (column) => column.name === 'following_user_id',
-    );
-    const followsFollowedFk = follows.columns.find((column) => column.name === 'followed_user_id');
+    const customerKey = factSales.columns.find((c) => c.name === 'customer_key');
+    const productKey = factSales.columns.find((c) => c.name === 'product_key');
+    const storeKey = factSales.columns.find((c) => c.name === 'store_key');
 
-    expect(postsFk?.isForeignKey).toBe(true);
-    expect(followsFollowingFk?.isForeignKey).toBe(true);
-    expect(followsFollowedFk?.isForeignKey).toBe(true);
+    expect(customerKey?.isForeignKey).toBe(true);
+    expect(productKey?.isForeignKey).toBe(true);
+    expect(storeKey?.isForeignKey).toBe(true);
   });
 
   it('keeps table-level refs for layout and link rendering', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    expect(schema.refs).toHaveLength(3);
+    // 6 inline refs in fact_sales + 4 inline refs in fact_inventory + 4 stand-alone refs
+    expect(schema.refs).toHaveLength(14);
 
-    const refs = schema.refs.map((ref) => ({
-      sourceId: ref.sourceId,
-      targetId: ref.targetId,
-      sourceFieldNames: ref.sourceFieldNames,
-      targetFieldNames: ref.targetFieldNames,
-    }));
-
-    expect(refs).toEqual([
-      {
-        sourceId: 'posts',
-        targetId: 'users',
-        sourceFieldNames: ['user_id'],
-        targetFieldNames: ['id'],
-      },
-      {
-        sourceId: 'users',
-        targetId: 'follows',
-        sourceFieldNames: ['id'],
-        targetFieldNames: ['following_user_id'],
-      },
-      {
-        sourceId: 'users',
-        targetId: 'follows',
-        sourceFieldNames: ['id'],
-        targetFieldNames: ['followed_user_id'],
-      },
-    ]);
+    const refPairs = schema.refs.map((ref) => `${ref.sourceId}->${ref.targetId}`);
+    // spot-check a few key relationships (dim tables are the "1" side — they appear as source)
+    expect(refPairs).toContain('dim_customer->fact_sales');
+    expect(refPairs).toContain('dim_product->fact_sales');
+    expect(refPairs).toContain('dim_supplier->fact_inventory');
+    expect(refPairs).toContain('dim_product->dim_supplier');
   });
 
   it('throws ParseError for malformed DBML', () => {

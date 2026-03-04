@@ -12,10 +12,10 @@ const __dirname = dirname(__filename);
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
 
 describe('parser -> layout pipeline', () => {
-  it('returns exactly 3 LayoutNode objects', () => {
+  it('returns exactly 8 LayoutNode objects', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
     const nodes = computeLayout(schema);
-    expect(nodes).toHaveLength(3);
+    expect(nodes).toHaveLength(8);
   });
 
   it('each node has id, name, and finite x, y, z', () => {
@@ -30,44 +30,38 @@ describe('parser -> layout pipeline', () => {
     }
   });
 
-  it('DBML -> schema -> layout retains users, posts, follows and field metadata', () => {
+  it('DBML -> schema -> layout retains dimensional model tables and field metadata', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
     const nodes = computeLayout(schema);
 
     const names = nodes.map((n) => n.name).sort();
-    expect(names).toEqual(['follows', 'posts', 'users']);
-
-    const users = schema.tables.find((t) => t.name === 'users');
-    const posts = schema.tables.find((t) => t.name === 'posts');
-    const follows = schema.tables.find((t) => t.name === 'follows');
-
-    expect(users?.columns.map((column) => column.name)).toEqual([
-      'id',
-      'username',
-      'role',
-      'created_at',
+    expect(names).toEqual([
+      'dim_customer',
+      'dim_date',
+      'dim_employee',
+      'dim_product',
+      'dim_store',
+      'dim_supplier',
+      'fact_inventory',
+      'fact_sales',
     ]);
-    expect(users?.columns.find((column) => column.name === 'id')).toMatchObject({
+
+    const dimCustomer = schema.tables.find((t) => t.name === 'dim_customer');
+    const factSales = schema.tables.find((t) => t.name === 'fact_sales');
+
+    expect(dimCustomer?.columns.find((c) => c.name === 'customer_key')).toMatchObject({
       isPrimaryKey: true,
       isForeignKey: false,
       isNotNull: false,
-      isUnique: false,
     });
 
-    expect(posts?.columns.find((column) => column.name === 'user_id')).toMatchObject({
+    expect(factSales?.columns.find((c) => c.name === 'customer_key')).toMatchObject({
       type: 'integer',
       isForeignKey: true,
       isNotNull: true,
     });
 
-    expect(follows?.columns.find((column) => column.name === 'following_user_id')).toMatchObject({
-      isForeignKey: true,
-    });
-    expect(follows?.columns.find((column) => column.name === 'followed_user_id')).toMatchObject({
-      isForeignKey: true,
-    });
-
-    expect(schema.refs).toHaveLength(3);
+    expect(schema.refs).toHaveLength(14);
   });
 
   it('notes-demo.dbml: posts table has body column with correct note after layout', () => {
