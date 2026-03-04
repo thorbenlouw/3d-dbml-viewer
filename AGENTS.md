@@ -106,10 +106,30 @@ unit, not its private internals.
 
 ### Visual / E2E tests (`tests/visual/`)
 
-- Use Playwright to load the app, upload a fixture DBML file, and assert that
-  the canvas renders without errors.
+- Use Playwright to load the app and assert structural correctness (canvas
+  present, correct dimensions, Reset View button, no JS errors).
 - Screenshot assertions are opt-in and stored under `tests/visual/snapshots/`.
   Run with `--update-snapshots` intentionally, never automatically.
+
+#### WebGL rendering verification — mandatory use of Playwright MCP
+
+**Headless Chromium cannot create a WebGL context.** `pnpm test:e2e` (headless)
+can only verify DOM structure; it cannot confirm that 3D boxes are actually
+visible on screen. A blank white canvas will pass the headless tests.
+
+Whenever you implement or modify renderer components (`src/renderer/`), you
+**must** verify visual output using the Playwright MCP server:
+
+1. Ensure the dev server is running (`pnpm dev`).
+2. Use the Playwright MCP `browser_navigate` + `browser_screenshot` tools to
+   open `http://localhost:5173` in a headed, GPU-enabled browser.
+3. Confirm in the screenshot that the expected 3D content is visible before
+   committing. Save the screenshot to `test-evidence/` as evidence.
+
+The Playwright MCP is configured in `~/.claude/settings.json` with
+`--headed --allowed-origins http://localhost:5173`. Do not skip this step —
+the opacity/distance calculation bug that made all boxes invisible on a white
+background was only caught by manual inspection, not by the automated tests.
 
 ### Coverage
 
@@ -154,7 +174,10 @@ pnpm test:e2e          # Playwright browser tests
 2. Write failing tests first (TDD) where practical.
 3. Implement the smallest change that makes the tests pass.
 4. Run `pnpm lint` and `pnpm typecheck` before committing.
-5. Update `PROJECT_OVERVIEW.md` if the architecture changes.
+5. If the feature touches `src/renderer/`, use Playwright MCP to take a
+   screenshot and confirm the scene renders correctly (see Visual / E2E tests
+   section above).
+6. Update `PROJECT_OVERVIEW.md` if the architecture changes.
 
 ---
 
