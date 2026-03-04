@@ -1,0 +1,113 @@
+# 3D DBML Viewer — Project Overview
+
+## Purpose
+
+A browser-based tool that parses [DBML (Database Markup Language)](https://dbml.dbdiagram.io) schema files and renders the entity-relationship diagram as an interactive 3D scene. Users can explore large, complex schemas spatially — rotating, zooming, and navigating between tables — in a way that flat 2D diagrams cannot support.
+
+## Goals
+
+- **Readable at scale** — schemas with 50+ tables become navigable, not overwhelming.
+- **Embeddable** — ships as a reusable React component that can be dropped into existing documentation sites or internal tooling.
+- **Developer-friendly** — accepts raw DBML text or a file path; designed for integration into CI pipelines and docs-as-code workflows.
+
+## Non-Goals (v1)
+
+- SQL/ORM import (only DBML input).
+- Real-time collaboration.
+- Editing the schema from within the viewer.
+- Server-side rendering.
+
+---
+
+## Architecture
+
+### Data Flow
+
+```
+DBML text
+    │
+    ▼
+┌─────────────┐
+│  Parser      │  @dbml/core
+│  (TypeScript)│  Converts DBML → normalised JSON graph
+└─────────────┘
+    │  { tables, fields, refs }
+    ▼
+┌─────────────┐
+│ Layout Engine│  d3-force-3d
+│             │  Force-directed simulation in 3D space
+│             │  Outputs (x, y, z) per node
+└─────────────┘
+    │  { id, x, y, z }[]
+    ▼
+┌─────────────┐
+│  Renderer   │  React Three Fiber + Three.js
+│             │  Renders table nodes, field lists, and
+│             │  relationship edges as 3D objects
+└─────────────┘
+    │
+    ▼
+  Browser canvas
+```
+
+### Layers
+
+| Layer             | Technology                                         | Responsibility                                                                                                                                          |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Parser**        | `@dbml/core`                                       | Tokenise and validate DBML; produce a typed JS object graph (`Database`, `Table`, `Field`, `Ref`).                                                      |
+| **Graph model**   | Plain TypeScript                                   | Transform the parser output into a framework-agnostic node/edge graph suitable for layout.                                                              |
+| **Layout engine** | `d3-force-3d`                                      | Run a force-directed simulation (repulsion + link forces) to position nodes in 3D space without overlaps. Layout is computed off-thread where possible. |
+| **Renderer**      | React Three Fiber (`@react-three/fiber`), Three.js | Declarative React component tree that maps graph nodes to `<mesh>` table cards and graph edges to `<Line>` or tube geometry connectors.                 |
+| **Controls**      | `@react-three/drei`                                | Orbit controls, camera damping, label sprites, and click-to-focus interaction.                                                                          |
+| **UI shell**      | React + Tailwind CSS                               | File upload, DBML text editor panel, and HUD controls outside the canvas.                                                                               |
+
+### Directory Layout (target)
+
+```
+3d-dbml-viewer/
+├── src/
+│   ├── parser/          # DBML → graph model
+│   ├── layout/          # d3-force-3d integration
+│   ├── renderer/        # React Three Fiber scene components
+│   ├── ui/              # Shell UI (sidebar, toolbar)
+│   ├── hooks/           # Shared React hooks
+│   └── types/           # Shared TypeScript types
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── visual/          # Storybook / Playwright visual tests
+├── features/            # Per-feature PRDs and design notes
+├── public/
+├── .env.example
+├── AGENTS.md
+└── PROJECT_OVERVIEW.md
+```
+
+---
+
+## Key Technical Decisions
+
+### Why `@dbml/core`?
+
+It is the reference implementation parser maintained by the creators of DBML (holistics.io). It handles edge cases, comments, and multi-schema DBML correctly. Alternative: hand-rolled parser (rejected — high maintenance burden).
+
+### Why `d3-force-3d`?
+
+Extends the well-understood d3-force API into 3D with minimal API surface. Produces deterministic layouts given a fixed seed. Alternative: `three-forcegraph` (higher-level but less control over the simulation).
+
+### Why React Three Fiber instead of raw Three.js?
+
+The component model aligns naturally with our React UI shell, making it straightforward to colocate scene state with React state. Drei provides ready-made helpers (Html overlays, Line, Text) that accelerate development. Alternative: vanilla Three.js (rejected — leads to imperative glue code fighting the React lifecycle).
+
+### Why Tailwind CSS?
+
+Utility-first CSS eliminates class-naming overhead for a small UI shell. Works well with component-library patterns.
+
+---
+
+## Open Questions
+
+1. **Layout persistence** — should the user be able to pin/save node positions? If so, where is that state stored (URL hash? localStorage?)?
+2. **Performance ceiling** — at what schema size does the force simulation become too slow for the browser main thread? Will we need a Web Worker?
+3. **Edge rendering** — straight `<Line>` segments vs. curved splines. Splines look better but add geometry complexity.
+4. **Colour scheme** — one colour per schema, or configurable themes?
