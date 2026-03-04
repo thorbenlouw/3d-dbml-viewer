@@ -42,8 +42,8 @@ DBML text
     ▼
 ┌─────────────┐
 │  Renderer   │  React Three Fiber + Three.js
-│             │  Renders table nodes, field lists, and
-│             │  relationship edges as 3D objects
+│             │  Renders billboarding table cards (header + field rows + badges)
+│             │  and routed relationship links as 3D objects
 └─────────────┘
     │
     ▼
@@ -57,7 +57,7 @@ DBML text
 | **Parser**        | `@dbml/core`                                       | Tokenise and validate DBML; produce a typed JS object graph (`Database`, `Table`, `Field`, `Ref`).                                                      |
 | **Graph model**   | Plain TypeScript                                   | Transform the parser output into a framework-agnostic node/edge graph suitable for layout.                                                              |
 | **Layout engine** | `d3-force-3d`                                      | Run a force-directed simulation (repulsion + link forces) to position nodes in 3D space without overlaps. Layout is computed off-thread where possible. |
-| **Renderer**      | React Three Fiber (`@react-three/fiber`), Three.js | Declarative React component tree that maps graph nodes to `<mesh>` table cards and graph edges to `<Line>` or tube geometry connectors.                 |
+| **Renderer**      | React Three Fiber (`@react-three/fiber`), Three.js | Declarative React component tree that maps graph nodes to `<mesh>` table cards and graph edges to curved routed link lines with endpoint fan-out.       |
 | **Controls**      | `@react-three/drei`                                | Orbit controls, camera damping, label sprites, and click-to-focus interaction.                                                                          |
 | **UI shell**      | React + Tailwind CSS                               | File upload, DBML text editor panel, and HUD controls outside the canvas.                                                                               |
 

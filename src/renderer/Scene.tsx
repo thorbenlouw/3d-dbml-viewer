@@ -9,13 +9,16 @@ import {
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import type { LayoutNode } from '@/types';
-import { RESET_TWEEN_DURATION_MS } from './constants';
-import TableBox from './TableBox';
+import type { LayoutNode, ParsedSchema, RelationshipLinkModel, TableCardNode } from '@/types';
+import { RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
+import TableCard from './TableCard';
+import RelationshipLink3D from './RelationshipLink3D';
+import { estimateTableCardDimensions } from './tableCardMetrics';
 import ResetViewButton from './ResetViewButton';
 
 interface SceneProps {
   nodes: LayoutNode[];
+  schema: ParsedSchema;
 }
 
 interface CameraTweenState {
@@ -32,9 +35,52 @@ interface CameraControllerProps {
   controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>;
 }
 
+interface CameraFrame {
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+}
+
 function easeInOutCubic(t: number): number {
   if (t < 0.5) return 4 * t * t * t;
   return 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function buildCardNodes(nodes: LayoutNode[], schema: ParsedSchema): TableCardNode[] {
+  const tableById = new Map(schema.tables.map((table) => [table.id, table]));
+
+  return nodes.flatMap((node) => {
+    const table = tableById.get(node.id);
+    if (!table) return [];
+    return [{ ...node, table }];
+  });
+}
+
+function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
+  const groupedKeyToRefs = new Map<string, typeof schema.refs>();
+
+  for (const ref of schema.refs) {
+    const key = `${ref.sourceId}->${ref.targetId}`;
+    const current = groupedKeyToRefs.get(key) ?? [];
+    current.push(ref);
+    groupedKeyToRefs.set(key, current);
+  }
+
+  const models: RelationshipLinkModel[] = [];
+  for (const refs of groupedKeyToRefs.values()) {
+    refs.forEach((ref, index) => {
+      models.push({
+        id: ref.id,
+        sourceId: ref.sourceId,
+        targetId: ref.targetId,
+        sourceFieldNames: ref.sourceFieldNames,
+        targetFieldNames: ref.targetFieldNames,
+        linkIndex: index,
+        parallelCount: refs.length,
+      });
+    });
+  }
+
+  return models;
 }
 
 function CameraController({ tweenStateRef, controlsRef }: CameraControllerProps): null {
@@ -63,44 +109,37 @@ function CameraController({ tweenStateRef, controlsRef }: CameraControllerProps)
   return null;
 }
 
-interface CameraFrame {
-  position: THREE.Vector3;
-  target: THREE.Vector3;
-}
-
-function computeCameraFrame(nodes: LayoutNode[], fovDeg: number): CameraFrame {
-  if (nodes.length === 0) {
+function computeCameraFrameFromPoints(points: THREE.Vector3[], fovDeg: number): CameraFrame {
+  if (points.length === 0) {
     return {
       position: new THREE.Vector3(6, 4, 12),
       target: new THREE.Vector3(0, 0, 0),
     };
   }
 
-  let minX = Infinity,
-    maxX = -Infinity;
-  let minY = Infinity,
-    maxY = -Infinity;
-  let minZ = Infinity,
-    maxZ = -Infinity;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
 
-  for (const n of nodes) {
-    if (n.x < minX) minX = n.x;
-    if (n.x > maxX) maxX = n.x;
-    if (n.y < minY) minY = n.y;
-    if (n.y > maxY) maxY = n.y;
-    if (n.z < minZ) minZ = n.z;
-    if (n.z > maxZ) maxZ = n.z;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+    if (point.z < minZ) minZ = point.z;
+    if (point.z > maxZ) maxZ = point.z;
   }
 
-  const target = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
+  const target = new THREE.Vector3((minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5);
   const radius = Math.sqrt(
-    Math.pow((maxX - minX) / 2, 2) +
-      Math.pow((maxY - minY) / 2, 2) +
-      Math.pow((maxZ - minZ) / 2, 2),
+    ((maxX - minX) * 0.5) ** 2 + ((maxY - minY) * 0.5) ** 2 + ((maxZ - minZ) * 0.5) ** 2,
   );
 
   const fovRad = THREE.MathUtils.degToRad(fovDeg);
-  const fitDistance = radius > 0 ? radius / Math.tan(fovRad / 2) : 8;
+  const fitDistance = radius > 0 ? radius / Math.tan(fovRad * 0.5) : 8;
   const distance = Math.max(fitDistance * 1.25, 8);
   const viewDirection = new THREE.Vector3(0.8, 0.4, 1).normalize();
   const position = target.clone().add(viewDirection.multiplyScalar(distance));
@@ -108,13 +147,59 @@ function computeCameraFrame(nodes: LayoutNode[], fovDeg: number): CameraFrame {
   return { position, target };
 }
 
-export default function Scene({ nodes }: SceneProps): ReactElement {
+export default function Scene({ nodes, schema }: SceneProps): ReactElement {
   const hasWebGL = useMemo(() => {
     const canvas = document.createElement('canvas');
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
   }, []);
+
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
-  const initialFrame = computeCameraFrame(nodes, 60);
+
+  const cardNodes = useMemo(() => buildCardNodes(nodes, schema), [nodes, schema]);
+  const linkModels = useMemo(() => buildLinkModels(schema), [schema]);
+  const cardById = useMemo(() => new Map(cardNodes.map((node) => [node.id, node])), [cardNodes]);
+
+  const framePoints = useMemo(() => {
+    const points: THREE.Vector3[] = [];
+
+    for (const cardNode of cardNodes) {
+      const dimensions = estimateTableCardDimensions(cardNode.table);
+      points.push(
+        new THREE.Vector3(
+          cardNode.x - dimensions.width * 0.5,
+          cardNode.y - dimensions.height * 0.5,
+          cardNode.z,
+        ),
+      );
+      points.push(
+        new THREE.Vector3(
+          cardNode.x + dimensions.width * 0.5,
+          cardNode.y + dimensions.height * 0.5,
+          cardNode.z + dimensions.depth,
+        ),
+      );
+    }
+
+    for (const link of linkModels) {
+      const source = cardById.get(link.sourceId);
+      const target = cardById.get(link.targetId);
+      if (!source || !target) continue;
+
+      points.push(new THREE.Vector3(source.x, source.y, source.z));
+      points.push(new THREE.Vector3(target.x, target.y, target.z));
+      points.push(
+        new THREE.Vector3(
+          (source.x + target.x) * 0.5,
+          (source.y + target.y) * 0.5,
+          Math.max(source.z, target.z) + 1,
+        ),
+      );
+    }
+
+    return points;
+  }, [cardNodes, linkModels, cardById]);
+
+  const initialFrame = useMemo(() => computeCameraFrameFromPoints(framePoints, 60), [framePoints]);
 
   const tweenStateRef = useRef<CameraTweenState>({
     active: false,
@@ -125,18 +210,18 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
     startTime: 0,
   });
 
-  const handleResetView = useCallback(() => {
+  const handleResetView = useCallback((): void => {
     const controls = controlsRef.current;
     if (!controls) return;
 
-    const resetFrame = computeCameraFrame(nodes, 60);
+    const resetFrame = computeCameraFrameFromPoints(framePoints, 60);
     tweenStateRef.current.active = true;
     tweenStateRef.current.startPosition = controls.object.position.clone();
     tweenStateRef.current.endPosition = resetFrame.position;
     tweenStateRef.current.startTarget = controls.target.clone();
     tweenStateRef.current.endTarget = resetFrame.target;
     tweenStateRef.current.startTime = Date.now();
-  }, [nodes]);
+  }, [framePoints]);
 
   if (hasWebGL === false) {
     return (
@@ -148,7 +233,7 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
           height: '100%',
           display: 'grid',
           placeItems: 'center',
-          background: '#0B1020',
+          background: SCENE_BG_COLOR,
           color: '#E6ECFF',
           fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
           padding: '2rem',
@@ -178,7 +263,7 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
         }}
         gl={{ preserveDrawingBuffer: true }}
       >
-        <color attach="background" args={['#0B1020']} />
+        <color attach="background" args={[SCENE_BG_COLOR]} />
         <OrbitControls
           ref={controlsRef}
           target={[initialFrame.target.x, initialFrame.target.y, initialFrame.target.z]}
@@ -188,8 +273,27 @@ export default function Scene({ nodes }: SceneProps): ReactElement {
           dampingFactor={0.1}
         />
         <CameraController tweenStateRef={tweenStateRef} controlsRef={controlsRef} />
-        {nodes.map((node) => (
-          <TableBox key={node.id} node={node} />
+
+        {linkModels.map((link) => {
+          const source = cardById.get(link.sourceId);
+          const target = cardById.get(link.targetId);
+          if (!source || !target) return null;
+
+          return (
+            <RelationshipLink3D
+              key={link.id}
+              sourceNode={source}
+              targetNode={target}
+              sourceFieldName={link.sourceFieldNames[0] ?? null}
+              targetFieldName={link.targetFieldNames[0] ?? null}
+              linkIndex={link.linkIndex}
+              parallelCount={link.parallelCount}
+            />
+          );
+        })}
+
+        {cardNodes.map((node) => (
+          <TableCard key={node.id} node={node} />
         ))}
       </Canvas>
       <ResetViewButton onClick={handleResetView} />

@@ -2,31 +2,40 @@ import { parseDatabaseSchema, ParseError } from '@/parser';
 import { computeLayout } from '@/layout';
 import { HARD_CODED_DBML } from '@/data/schema.dbml';
 import Scene from '@/renderer/Scene';
-import type { LayoutNode } from '@/types';
+import type { LayoutNode, ParsedSchema } from '@/types';
 import type { ReactElement } from 'react';
 
-function buildNodes(): { nodes: LayoutNode[]; error: string | null } {
+interface AppData {
+  nodes: LayoutNode[];
+  schema: ParsedSchema;
+  error: string | null;
+}
+
+function buildAppData(): AppData {
   try {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    return { nodes: computeLayout(schema), error: null };
+    return { nodes: computeLayout(schema), schema, error: null };
   } catch (err) {
     if (err instanceof ParseError) {
       console.error('ParseError:', err.message, err.cause);
-      return { nodes: [], error: err.message };
+      return { nodes: [], schema: { tables: [], refs: [] }, error: err.message };
     }
     console.error('Unexpected error:', err);
-    return { nodes: [], error: 'An unexpected error occurred' };
+    return {
+      nodes: [],
+      schema: { tables: [], refs: [] },
+      error: 'An unexpected error occurred',
+    };
   }
 }
 
-// Computed once at module level — the DBML is a static constant
-const { nodes: INITIAL_NODES, error: INITIAL_ERROR } = buildNodes();
+const INITIAL_DATA: AppData = buildAppData();
 
 export default function App(): ReactElement {
-  if (INITIAL_ERROR) {
+  if (INITIAL_DATA.error) {
     return (
       <div style={{ padding: '2rem', fontFamily: 'sans-serif', color: '#c00' }}>
-        <strong>Error loading schema:</strong> {INITIAL_ERROR}
+        <strong>Error loading schema:</strong> {INITIAL_DATA.error}
       </div>
     );
   }
@@ -40,7 +49,7 @@ export default function App(): ReactElement {
         position: 'relative',
       }}
     >
-      <Scene nodes={INITIAL_NODES} />
+      <Scene nodes={INITIAL_DATA.nodes} schema={INITIAL_DATA.schema} />
     </div>
   );
 }

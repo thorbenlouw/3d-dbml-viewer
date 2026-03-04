@@ -2,6 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { parseDatabaseSchema, ParseError } from '@/parser';
 import { HARD_CODED_DBML } from '@/data/schema.dbml';
 
+function findTable(tableName: string) {
+  const schema = parseDatabaseSchema(HARD_CODED_DBML);
+  const table = schema.tables.find((entry) => entry.name === tableName);
+  if (!table) {
+    throw new Error(`Expected table ${tableName} to exist`);
+  }
+  return table;
+}
+
 describe('parseDatabaseSchema', () => {
   it('returns exactly 3 tables for the hard-coded schema', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -14,36 +23,104 @@ describe('parseDatabaseSchema', () => {
     expect(names).toEqual(['follows', 'posts', 'users']);
   });
 
-  it('returns 3 refs (posts→users, users→follows x2)', () => {
+  it('extracts field names and types for all hard-coded tables', () => {
+    const schema = parseDatabaseSchema(HARD_CODED_DBML);
+
+    const tableToFields = Object.fromEntries(
+      schema.tables.map((table) => [
+        table.name,
+        table.columns.map((column) => `${column.name}:${column.type}`),
+      ]),
+    );
+
+    expect(tableToFields.users).toEqual([
+      'id:integer',
+      'username:varchar',
+      'role:varchar',
+      'created_at:timestamp',
+    ]);
+    expect(tableToFields.posts).toEqual([
+      'id:integer',
+      'title:varchar',
+      'body:text',
+      'user_id:integer',
+      'status:varchar',
+      'created_at:timestamp',
+    ]);
+    expect(tableToFields.follows).toEqual([
+      'following_user_id:integer',
+      'followed_user_id:integer',
+      'created_at:timestamp',
+    ]);
+  });
+
+  it('captures PK and NN flags from DBML settings', () => {
+    const users = findTable('users');
+    const posts = findTable('posts');
+
+    const usersId = users.columns.find((column) => column.name === 'id');
+    const postsUserId = posts.columns.find((column) => column.name === 'user_id');
+
+    expect(usersId?.isPrimaryKey).toBe(true);
+    expect(usersId?.isNotNull).toBe(false);
+
+    expect(postsUserId?.isPrimaryKey).toBe(false);
+    expect(postsUserId?.isNotNull).toBe(true);
+  });
+
+  it('derives FK flags from refs for posts.user_id and follows.*_user_id', () => {
+    const posts = findTable('posts');
+    const follows = findTable('follows');
+
+    const postsFk = posts.columns.find((column) => column.name === 'user_id');
+    const followsFollowingFk = follows.columns.find(
+      (column) => column.name === 'following_user_id',
+    );
+    const followsFollowedFk = follows.columns.find((column) => column.name === 'followed_user_id');
+
+    expect(postsFk?.isForeignKey).toBe(true);
+    expect(followsFollowingFk?.isForeignKey).toBe(true);
+    expect(followsFollowedFk?.isForeignKey).toBe(true);
+  });
+
+  it('keeps table-level refs for layout and link rendering', () => {
     const schema = parseDatabaseSchema(HARD_CODED_DBML);
     expect(schema.refs).toHaveLength(3);
-  });
 
-  it('includes the posts→users ref', () => {
-    const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    const hasPostsUsers = schema.refs.some(
-      (r) =>
-        (r.sourceId === 'posts' && r.targetId === 'users') ||
-        (r.sourceId === 'users' && r.targetId === 'posts'),
-    );
-    expect(hasPostsUsers).toBe(true);
-  });
+    const refs = schema.refs.map((ref) => ({
+      sourceId: ref.sourceId,
+      targetId: ref.targetId,
+      sourceFieldNames: ref.sourceFieldNames,
+      targetFieldNames: ref.targetFieldNames,
+    }));
 
-  it('includes refs from users to follows', () => {
-    const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    const usersFollowsRefs = schema.refs.filter(
-      (r) =>
-        (r.sourceId === 'users' && r.targetId === 'follows') ||
-        (r.sourceId === 'follows' && r.targetId === 'users'),
-    );
-    expect(usersFollowsRefs).toHaveLength(2);
+    expect(refs).toEqual([
+      {
+        sourceId: 'posts',
+        targetId: 'users',
+        sourceFieldNames: ['user_id'],
+        targetFieldNames: ['id'],
+      },
+      {
+        sourceId: 'users',
+        targetId: 'follows',
+        sourceFieldNames: ['id'],
+        targetFieldNames: ['following_user_id'],
+      },
+      {
+        sourceId: 'users',
+        targetId: 'follows',
+        sourceFieldNames: ['id'],
+        targetFieldNames: ['followed_user_id'],
+      },
+    ]);
   });
 
   it('throws ParseError for malformed DBML', () => {
     expect(() => parseDatabaseSchema('not valid dbml {{{')).toThrow(ParseError);
   });
 
-  it('Records blocks do not produce extra tables', () => {
+  it('TablePartial blocks do not produce extra tables', () => {
     const dbmlWithRecords = `
       Table products {
         id integer [primary key]
