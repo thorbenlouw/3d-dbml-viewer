@@ -7,6 +7,8 @@ import {
   NOTE_PANEL_MAX_WIDTH,
   NOTE_PANEL_MAX_HEIGHT,
   NOTE_PANEL_PADDING,
+  SCENE_FONT_BOLD,
+  SCENE_FONT_REGULAR,
   TEXT_ROW_SIZE,
   TEXT_BADGE_SIZE,
 } from './constants';
@@ -90,19 +92,20 @@ export default function NotePanel({
 
       {/* Header label */}
       <Text
+        font={SCENE_FONT_BOLD}
         color={PANEL_TEXT_COLOR}
         fontSize={TEXT_ROW_SIZE}
         position={[-PANEL_WIDTH / 2 + NOTE_PANEL_PADDING, headerY, PANEL_DEPTH / 2 + 0.012]}
         anchorX="left"
         anchorY="middle"
         maxWidth={PANEL_WIDTH - CLOSE_BTN_SIZE - NOTE_PANEL_PADDING * 3}
-        fontWeight="bold"
       >
         {ownerLabel}
       </Text>
 
       {/* Body text */}
       <Text
+        font={SCENE_FONT_REGULAR}
         color={PANEL_TEXT_COLOR}
         fontSize={TEXT_BADGE_SIZE * 1.2}
         position={[-PANEL_WIDTH / 2 + NOTE_PANEL_PADDING * 2, bodyTextY, PANEL_DEPTH / 2 + 0.012]}
@@ -120,6 +123,7 @@ export default function NotePanel({
           <meshBasicMaterial color={PANEL_TEXT_COLOR} transparent opacity={0.8} />
         </mesh>
         <Text
+          font={SCENE_FONT_REGULAR}
           color={PANEL_BG_COLOR}
           fontSize={TEXT_ROW_SIZE}
           anchorX="center"

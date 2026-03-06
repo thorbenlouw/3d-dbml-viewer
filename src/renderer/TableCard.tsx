@@ -28,6 +28,8 @@ import {
   NOTE_HIGHLIGHT_COLOR,
   OPACITY_FAR,
   OPACITY_NEAR,
+  SCENE_FONT_BOLD,
+  SCENE_FONT_REGULAR,
   TEXT_BADGE_SIZE,
   TEXT_COLOR,
   TEXT_HEADER_SIZE,
@@ -214,6 +216,7 @@ export default function TableCard({
       )}
 
       <Text
+        font={SCENE_FONT_REGULAR}
         color={highlightedColumn === '__table__' ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
         fontSize={TEXT_HEADER_SIZE}
         position={[0, headerY, dimensions.depth / 2 + 0.012]}
@@ -226,6 +229,7 @@ export default function TableCard({
 
       {node.table.note && (
         <Text
+          font={SCENE_FONT_REGULAR}
           color={NOTE_HIGHLIGHT_COLOR}
           fontSize={NOTE_ICON_SIZE}
           anchorX="center"
@@ -291,9 +295,9 @@ export default function TableCard({
             </mesh>
 
             <Text
+              font={column.isPrimaryKey ? SCENE_FONT_BOLD : SCENE_FONT_REGULAR}
               color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
-              fontWeight={column.isPrimaryKey ? 700 : 400}
               position={[leftX, rowY, dimensions.depth / 2 + 0.02]}
               anchorX="left"
               anchorY="middle"
@@ -303,6 +307,7 @@ export default function TableCard({
             </Text>
 
             <Text
+              font={SCENE_FONT_REGULAR}
               color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
               position={[
@@ -330,6 +335,7 @@ export default function TableCard({
                     <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
                   </mesh>
                   <Text
+                    font={SCENE_FONT_BOLD}
                     color={BADGE_TEXT_COLOR}
                     fontSize={TEXT_BADGE_SIZE}
                     anchorX="center"
@@ -344,6 +350,7 @@ export default function TableCard({
 
             {column.note && (
               <Text
+                font={SCENE_FONT_REGULAR}
                 color={NOTE_HIGHLIGHT_COLOR}
                 fontSize={NOTE_ICON_SIZE}
                 anchorX="center"
