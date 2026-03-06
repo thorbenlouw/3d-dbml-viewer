@@ -23,7 +23,6 @@ import {
   CONNECTION_SCALE_MAX,
   CONNECTION_SCALE_MIN,
   CONNECTION_SCALE_UNITS_PER_SECOND,
-  FLY_TO_DISTANCE,
   HOLD_CONTROL_INTERVAL_MS,
   PANEL_ACCENT_COLOR,
   PANEL_BG_COLOR,
@@ -75,6 +74,14 @@ interface CameraControllerProps {
 interface CameraFrame {
   position: THREE.Vector3;
   target: THREE.Vector3;
+}
+
+interface StickyFocusOptions {
+  tableId: string;
+  cardById: Map<string, TableCardNode>;
+  linkModels: RelationshipLinkModel[];
+  camera: THREE.Camera;
+  fovDeg: number;
 }
 
 interface DraggableTableCardProps {
@@ -141,6 +148,77 @@ function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
   }
 
   return models;
+}
+
+function buildStickyFocusFrame({
+  tableId,
+  cardById,
+  linkModels,
+  camera,
+  fovDeg,
+}: StickyFocusOptions): CameraFrame | null {
+  const stickyNode = cardById.get(tableId);
+  if (!stickyNode) return null;
+
+  const neighbourIds = new Set<string>();
+  for (const link of linkModels) {
+    if (link.sourceId === tableId) neighbourIds.add(link.targetId);
+    if (link.targetId === tableId) neighbourIds.add(link.sourceId);
+  }
+
+  const focusNodes = [stickyNode];
+  for (const neighbourId of neighbourIds) {
+    const node = cardById.get(neighbourId);
+    if (node) focusNodes.push(node);
+  }
+
+  const target = new THREE.Vector3(stickyNode.x, stickyNode.y, stickyNode.z);
+  const currentViewDirection = camera.position.clone().sub(target).normalize();
+
+  let offsetDirection = currentViewDirection.clone();
+  if (focusNodes.length > 2) {
+    // Approximate the plane normal from neighbour vectors around the sticky node.
+    const normal = new THREE.Vector3();
+    for (let i = 1; i < focusNodes.length - 1; i += 1) {
+      const v1 = new THREE.Vector3(
+        focusNodes[i].x - stickyNode.x,
+        focusNodes[i].y - stickyNode.y,
+        focusNodes[i].z - stickyNode.z,
+      );
+      for (let j = i + 1; j < focusNodes.length; j += 1) {
+        const v2 = new THREE.Vector3(
+          focusNodes[j].x - stickyNode.x,
+          focusNodes[j].y - stickyNode.y,
+          focusNodes[j].z - stickyNode.z,
+        );
+        normal.add(v1.cross(v2));
+      }
+    }
+
+    if (normal.lengthSq() > 1e-6) {
+      normal.normalize();
+      if (normal.dot(currentViewDirection) < 0) normal.multiplyScalar(-1);
+      offsetDirection = normal;
+    }
+  }
+
+  const fovRad = THREE.MathUtils.degToRad(fovDeg);
+  let fitRadius = 0.6;
+  for (const node of focusNodes) {
+    const nodeCenter = new THREE.Vector3(node.x, node.y, node.z);
+    const toNode = nodeCenter.sub(target);
+    const projected = toNode.addScaledVector(offsetDirection, -toNode.dot(offsetDirection));
+    const dimensions = estimateTableCardDimensions(node.table);
+    const cardRadius =
+      Math.sqrt(dimensions.width * dimensions.width + dimensions.height * dimensions.height) * 0.5;
+    fitRadius = Math.max(fitRadius, projected.length() + cardRadius);
+  }
+
+  const distance = Math.max(fitRadius / Math.tan(fovRad * 0.5), 3.5);
+  return {
+    target,
+    position: target.clone().add(offsetDirection.multiplyScalar(distance * 1.1)),
+  };
 }
 
 function AdjustButton({
@@ -619,22 +697,23 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     pendingTweenRef.current = resetFrame;
   }, [framePoints, stickyNodePosition]);
 
-  const handleFlyTo = useCallback(
+  const handleFocusSticky = useCallback(
     (tableId: string): void => {
-      const node = cardById.get(tableId);
       const controls = controlsRef.current;
-      if (!node || !controls) return;
+      if (!controls) return;
 
-      const endTarget = new THREE.Vector3(node.x, node.y, node.z);
-      const forward = new THREE.Vector3();
-      controls.object.getWorldDirection(forward);
-      const endPosition = endTarget
-        .clone()
-        .add(forward.negate().normalize().multiplyScalar(FLY_TO_DISTANCE));
+      const frame = buildStickyFocusFrame({
+        tableId,
+        cardById,
+        linkModels,
+        camera: controls.object,
+        fovDeg: 60,
+      });
+      if (!frame) return;
 
-      pendingTweenRef.current = { position: endPosition, target: endTarget };
+      pendingTweenRef.current = frame;
     },
-    [cardById],
+    [cardById, linkModels],
   );
 
   const handleHeaderDoubleClick = useCallback(
@@ -646,9 +725,9 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       }
 
       setStickyTableId(tableId);
-      handleFlyTo(tableId);
+      handleFocusSticky(tableId);
     },
-    [handleFlyTo],
+    [handleFocusSticky],
   );
 
   const handleDragStart = useCallback(
