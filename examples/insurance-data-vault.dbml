@@ -1,0 +1,494 @@
+// ============================================================
+// Insurance Data Vault — Raw Vault layer
+// Domain: Personal lines insurance (auto + property)
+// Methodology: Data Vault 2.0
+//   Hubs    — core business entities (hash key + business key)
+//   Links   — relationships between hubs
+//   Satellites — descriptive attributes, type-2 tracked
+// ============================================================
+
+// ─────────────────────────────────────────────
+//  HUBS
+// ─────────────────────────────────────────────
+
+Table hub_customer {
+  hk_customer char(32) [pk, note: 'MD5 hash of customer_bk']
+  customer_bk varchar(255) [not null, unique, note: 'National ID or assigned customer number']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: identifies a unique insurance customer (policyholder or named insured).'
+}
+
+Table hub_policy {
+  hk_policy char(32) [pk, note: 'MD5 hash of policy_bk']
+  policy_bk varchar(50) [not null, unique, note: 'Policy number assigned at underwriting']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: uniquely identifies an insurance policy contract.'
+}
+
+Table hub_claim {
+  hk_claim char(32) [pk, note: 'MD5 hash of claim_bk']
+  claim_bk varchar(50) [not null, unique, note: 'Claim reference number assigned at first notice of loss']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: uniquely identifies a loss event claim made against a policy.'
+}
+
+Table hub_vehicle {
+  hk_vehicle char(32) [pk, note: 'MD5 hash of vin']
+  vin varchar(17) [not null, unique, note: 'Vehicle Identification Number — the natural business key']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: uniquely identifies a motor vehicle by its VIN.'
+}
+
+Table hub_property {
+  hk_property char(32) [pk, note: 'MD5 hash of property_bk']
+  property_bk varchar(255) [not null, unique, note: 'Cadastral reference or normalised postal address']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: uniquely identifies an insured property (home, commercial premises).'
+}
+
+Table hub_agent {
+  hk_agent char(32) [pk, note: 'MD5 hash of agent_bk']
+  agent_bk varchar(50) [not null, unique, note: 'Regulatory licence number of the broker or tied agent']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: uniquely identifies an insurance agent or broker.'
+}
+
+Table hub_coverage_type {
+  hk_coverage_type char(32) [pk, note: 'MD5 hash of coverage_code']
+  coverage_code varchar(20) [not null, unique, note: 'Internal code for coverage type (e.g. TPL, COMP, FIRE)']
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Hub: identifies a distinct coverage type offered on policies.'
+}
+
+// ─────────────────────────────────────────────
+//  LINKS
+// ─────────────────────────────────────────────
+
+Table lnk_customer_policy {
+  hk_customer_policy char(32) [pk, note: 'MD5 hash of hk_customer + hk_policy']
+  hk_customer char(32) [not null]
+  hk_policy char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: associates a customer (named insured) with a policy.'
+}
+
+Table lnk_policy_coverage {
+  hk_policy_coverage char(32) [pk, note: 'MD5 hash of hk_policy + hk_coverage_type']
+  hk_policy char(32) [not null]
+  hk_coverage_type char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: records which coverage types are included on a policy.'
+}
+
+Table lnk_policy_vehicle {
+  hk_policy_vehicle char(32) [pk, note: 'MD5 hash of hk_policy + hk_vehicle']
+  hk_policy char(32) [not null]
+  hk_vehicle char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: associates a vehicle with the auto policy that schedules it.'
+}
+
+Table lnk_policy_property {
+  hk_policy_property char(32) [pk, note: 'MD5 hash of hk_policy + hk_property']
+  hk_policy char(32) [not null]
+  hk_property char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: associates a property with the home/commercial policy that covers it.'
+}
+
+Table lnk_claim_policy {
+  hk_claim_policy char(32) [pk, note: 'MD5 hash of hk_claim + hk_policy']
+  hk_claim char(32) [not null]
+  hk_policy char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: connects a claim to the policy against which it was made.'
+}
+
+Table lnk_claim_vehicle {
+  hk_claim_vehicle char(32) [pk, note: 'MD5 hash of hk_claim + hk_vehicle']
+  hk_claim char(32) [not null]
+  hk_vehicle char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: identifies the vehicle involved in an auto claim.'
+}
+
+Table lnk_claim_property {
+  hk_claim_property char(32) [pk, note: 'MD5 hash of hk_claim + hk_property']
+  hk_claim char(32) [not null]
+  hk_property char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: identifies the property involved in a property claim.'
+}
+
+Table lnk_policy_agent {
+  hk_policy_agent char(32) [pk, note: 'MD5 hash of hk_policy + hk_agent']
+  hk_policy char(32) [not null]
+  hk_agent char(32) [not null]
+  load_date timestamp [not null]
+  record_source varchar(100) [not null]
+
+  note: 'Link: records the agent or broker who placed the policy.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Customers
+// ─────────────────────────────────────────────
+
+Table sat_customer_personal {
+  hk_customer char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null, note: 'Hash of all descriptive columns for change detection']
+  record_source varchar(100) [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  date_of_birth date [not null]
+  gender char(1)
+  marital_status varchar(20)
+  occupation varchar(100)
+
+  indexes {
+    (hk_customer, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 personal demographics for a customer.'
+}
+
+Table sat_customer_contact {
+  hk_customer char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  email varchar(255)
+  phone_mobile varchar(20)
+  phone_home varchar(20)
+  address_line1 varchar(255)
+  address_line2 varchar(255)
+  city varchar(100)
+  state_province varchar(50)
+  postal_code varchar(20)
+  country char(2) [not null, default: 'US']
+
+  indexes {
+    (hk_customer, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 contact and address details for a customer.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Policies
+// ─────────────────────────────────────────────
+
+Table sat_policy_details {
+  hk_policy char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  policy_type varchar(30) [not null, note: 'AUTO, HOME, COMMERCIAL, UMBRELLA']
+  status varchar(20) [not null, note: 'QUOTED, ACTIVE, LAPSED, CANCELLED, EXPIRED']
+  effective_date date [not null]
+  expiry_date date [not null]
+  renewal_date date
+  payment_frequency varchar(20) [not null, note: 'ANNUAL, SEMI_ANNUAL, MONTHLY']
+
+  indexes {
+    (hk_policy, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 core attributes of an insurance policy.'
+}
+
+Table sat_policy_premium {
+  hk_policy char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  annual_premium_cents bigint [not null]
+  base_premium_cents bigint [not null]
+  tax_cents bigint [not null, default: 0]
+  discount_cents bigint [not null, default: 0]
+  currency char(3) [not null, default: 'USD']
+  risk_score decimal(5,2)
+
+  indexes {
+    (hk_policy, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 premium and rating details for a policy.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Claims
+// ─────────────────────────────────────────────
+
+Table sat_claim_event {
+  hk_claim char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  loss_date date [not null]
+  reported_date date [not null]
+  loss_type varchar(50) [not null, note: 'COLLISION, THEFT, FIRE, FLOOD, LIABILITY, etc.']
+  description text
+  incident_location varchar(255)
+  at_fault boolean
+
+  indexes {
+    (hk_claim, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 details of the loss event that triggered the claim.'
+}
+
+Table sat_claim_status {
+  hk_claim char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  status varchar(30) [not null, note: 'OPEN, UNDER_INVESTIGATION, APPROVED, DENIED, SETTLED, CLOSED']
+  adjuster_id varchar(50)
+  reserve_amount_cents bigint [not null, default: 0, note: 'Current financial reserve held for claim']
+  paid_amount_cents bigint [not null, default: 0]
+  deductible_applied_cents bigint [not null, default: 0]
+  closed_date date
+
+  indexes {
+    (hk_claim, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 financial and workflow status of a claim.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Vehicles
+// ─────────────────────────────────────────────
+
+Table sat_vehicle_attributes {
+  hk_vehicle char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  make varchar(50) [not null]
+  model varchar(100) [not null]
+  model_year smallint [not null]
+  body_type varchar(50)
+  engine_cc int
+  fuel_type varchar(20)
+  colour varchar(50)
+  gross_vehicle_weight_kg int
+
+  indexes {
+    (hk_vehicle, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 physical attributes of an insured vehicle.'
+}
+
+Table sat_vehicle_registration {
+  hk_vehicle char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  licence_plate varchar(20)
+  registration_state char(2)
+  registration_expiry date
+  odometer_km int
+
+  indexes {
+    (hk_vehicle, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 registration and usage data for an insured vehicle.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Properties
+// ─────────────────────────────────────────────
+
+Table sat_property_details {
+  hk_property char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  property_type varchar(30) [not null, note: 'RESIDENTIAL, CONDO, COMMERCIAL, FARM']
+  construction_type varchar(30)
+  year_built smallint
+  floor_area_sqm decimal(10,2)
+  number_of_storeys smallint
+  roof_type varchar(50)
+  address_line1 varchar(255) [not null]
+  city varchar(100) [not null]
+  state_province varchar(50) [not null]
+  postal_code varchar(20) [not null]
+  country char(2) [not null, default: 'US']
+
+  indexes {
+    (hk_property, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 physical and location attributes of an insured property.'
+}
+
+Table sat_property_valuation {
+  hk_property char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  insured_value_cents bigint [not null]
+  replacement_cost_cents bigint
+  market_value_cents bigint
+  valuation_date date [not null]
+  valuation_method varchar(50)
+
+  indexes {
+    (hk_property, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 valuation and sum-insured figures for a property.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Agents
+// ─────────────────────────────────────────────
+
+Table sat_agent_details {
+  hk_agent char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  agency_name varchar(255)
+  email varchar(255)
+  phone varchar(20)
+  licence_state char(2)
+  licence_expiry date
+  agent_type varchar(20) [not null, note: 'TIED, INDEPENDENT, DIRECT']
+
+  indexes {
+    (hk_agent, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 profile details for an insurance agent or broker.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Coverage types
+// ─────────────────────────────────────────────
+
+Table sat_coverage_type_details {
+  hk_coverage_type char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  name varchar(100) [not null]
+  category varchar(30) [not null, note: 'LIABILITY, PROPERTY, MEDICAL, UNINSURED']
+  description text
+  default_limit_cents bigint
+  default_deductible_cents bigint
+
+  indexes {
+    (hk_coverage_type, load_date) [pk]
+  }
+
+  note: 'Satellite: type-2 product definition for a coverage type.'
+}
+
+// ─────────────────────────────────────────────
+//  SATELLITES — Link effectivity (optional DV2 pattern)
+// ─────────────────────────────────────────────
+
+Table sat_customer_policy_effectivity {
+  hk_customer_policy char(32) [not null]
+  load_date timestamp [not null]
+  load_end_date timestamp [note: 'NULL = current record']
+  hash_diff char(32) [not null]
+  record_source varchar(100) [not null]
+  relationship_type varchar(30) [not null, note: 'PRIMARY, CO_INSURED, BENEFICIARY']
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (hk_customer_policy, load_date) [pk]
+  }
+
+  note: 'Satellite: tracks the active/inactive state and role of a customer-policy relationship.'
+}
+
+// ─────────────────────────────────────────────
+//  REFERENCES (FK relationships)
+// ─────────────────────────────────────────────
+
+// Link → Hub
+Ref: lnk_customer_policy.hk_customer > hub_customer.hk_customer
+Ref: lnk_customer_policy.hk_policy > hub_policy.hk_policy
+Ref: lnk_policy_coverage.hk_policy > hub_policy.hk_policy
+Ref: lnk_policy_coverage.hk_coverage_type > hub_coverage_type.hk_coverage_type
+Ref: lnk_policy_vehicle.hk_policy > hub_policy.hk_policy
+Ref: lnk_policy_vehicle.hk_vehicle > hub_vehicle.hk_vehicle
+Ref: lnk_policy_property.hk_policy > hub_policy.hk_policy
+Ref: lnk_policy_property.hk_property > hub_property.hk_property
+Ref: lnk_claim_policy.hk_claim > hub_claim.hk_claim
+Ref: lnk_claim_policy.hk_policy > hub_policy.hk_policy
+Ref: lnk_claim_vehicle.hk_claim > hub_claim.hk_claim
+Ref: lnk_claim_vehicle.hk_vehicle > hub_vehicle.hk_vehicle
+Ref: lnk_claim_property.hk_claim > hub_claim.hk_claim
+Ref: lnk_claim_property.hk_property > hub_property.hk_property
+Ref: lnk_policy_agent.hk_policy > hub_policy.hk_policy
+Ref: lnk_policy_agent.hk_agent > hub_agent.hk_agent
+
+// Satellite → Hub
+Ref: sat_customer_personal.hk_customer > hub_customer.hk_customer
+Ref: sat_customer_contact.hk_customer > hub_customer.hk_customer
+Ref: sat_policy_details.hk_policy > hub_policy.hk_policy
+Ref: sat_policy_premium.hk_policy > hub_policy.hk_policy
+Ref: sat_claim_event.hk_claim > hub_claim.hk_claim
+Ref: sat_claim_status.hk_claim > hub_claim.hk_claim
+Ref: sat_vehicle_attributes.hk_vehicle > hub_vehicle.hk_vehicle
+Ref: sat_vehicle_registration.hk_vehicle > hub_vehicle.hk_vehicle
+Ref: sat_property_details.hk_property > hub_property.hk_property
+Ref: sat_property_valuation.hk_property > hub_property.hk_property
+Ref: sat_agent_details.hk_agent > hub_agent.hk_agent
+Ref: sat_coverage_type_details.hk_coverage_type > hub_coverage_type.hk_coverage_type
+
+// Satellite → Link
+Ref: sat_customer_policy_effectivity.hk_customer_policy > lnk_customer_policy.hk_customer_policy
