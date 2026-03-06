@@ -25,6 +25,20 @@ async function hoverUntilNavigationUpdates(
   return false;
 }
 
+async function doubleClickCanvasPoint(
+  page: import('@playwright/test').Page,
+  xRatio: number,
+  yRatio: number,
+): Promise<void> {
+  const canvas = page.locator('canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Canvas bounding box unavailable');
+  const x = box.x + box.width * xRatio;
+  const y = box.y + box.height * yRatio;
+  await page.mouse.dblclick(x, y);
+  await page.waitForTimeout(250);
+}
+
 test('interactive layout — canvas loads and tables are visible', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (err) => {
@@ -110,6 +124,48 @@ test('interactive layout — drag simulation runs without JS errors', async ({ p
   // Note icons are passive; click inside the scene should not open any note panel controls.
   await page.mouse.click(canvasBox?.x ?? 20, canvasBox?.y ?? 20);
   await expect(page.getByRole('button', { name: /close note/i })).toHaveCount(0);
+
+  expect(pageErrors).toHaveLength(0);
+});
+
+test('interactive layout — focus marker placement/removal works', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => {
+    if (!err.message.includes('WebGL context')) {
+      pageErrors.push(err.message);
+    }
+  });
+
+  await page.goto('/');
+
+  const canvas = page.locator('canvas');
+  const fallback = page.getByText('WebGL is unavailable in this browser session.');
+  const sceneRoot = page.getByTestId('scene-root');
+
+  await expect(canvas.or(fallback)).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(2000);
+
+  if (await fallback.isVisible()) {
+    expect(pageErrors).toHaveLength(0);
+    return;
+  }
+
+  await expect(sceneRoot).toHaveAttribute('data-focus-mode', 'none');
+
+  // Place marker by double-clicking empty space.
+  await doubleClickCanvasPoint(page, 0.08, 0.1);
+  await expect(sceneRoot).toHaveAttribute('data-focus-mode', 'marker');
+
+  // Marker mode recenters pivot, so marker is near viewport center after placement.
+  await doubleClickCanvasPoint(page, 0.5, 0.5);
+  await expect(sceneRoot).toHaveAttribute('data-focus-mode', 'none');
+
+  await doubleClickCanvasPoint(page, 0.08, 0.1);
+  await expect(sceneRoot).toHaveAttribute('data-focus-mode', 'marker');
+
+  const evidenceDir = path.resolve('test-evidence');
+  if (!fs.existsSync(evidenceDir)) fs.mkdirSync(evidenceDir, { recursive: true });
+  await page.screenshot({ path: path.join(evidenceDir, 'focus-marker-mode.png') });
 
   expect(pageErrors).toHaveLength(0);
 });

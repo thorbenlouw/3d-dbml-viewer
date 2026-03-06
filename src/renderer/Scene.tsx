@@ -28,6 +28,9 @@ import {
   PANEL_BG_COLOR,
   PANEL_BORDER_COLOR,
   PANEL_TEXT_COLOR,
+  FOCUS_MARKER_MIN_SCREEN_PX,
+  FOCUS_MARKER_PLACEMENT_PLANE_Z,
+  FOCUS_MARKER_Z_OFFSET,
   RESET_TWEEN_DURATION_MS,
   SCENE_BG_COLOR,
   ZOOM_SCALE_DEFAULT,
@@ -44,6 +47,9 @@ import { useDragCard } from './useDragCard';
 import NavigationPanel from './NavigationPanel';
 import { getReferencedTablesForTable, shouldHighlightRelationship } from './hoverContext';
 import LoadFileButton from '@/ui/LoadFileButton';
+import FocusMarker from './FocusMarker';
+import { resolveMarkerPlacementPosition } from './interaction';
+import { activateFocusMarker, activateStickyFocus, toggleStickyTable } from './focusMode';
 
 interface SceneProps {
   schema: ParsedSchema;
@@ -65,6 +71,7 @@ interface CameraControllerProps {
   pendingTweenRef: RefObject<CameraFrame | null>;
   settledFrameRef: RefObject<CameraFrame | null>;
   shouldTweenToSettledRef: RefObject<boolean>;
+  focusMarkerPosition: THREE.Vector3 | null;
   stickyTableId: string | null;
   stickyNodePosition: THREE.Vector3 | null;
   zoomScale: number;
@@ -102,6 +109,18 @@ interface AdjustButtonProps {
   ariaLabel: string;
   onHoldStart: () => void;
   onHoldEnd: () => void;
+}
+
+interface FocusMarkerState {
+  schema: ParsedSchema;
+  position: THREE.Vector3;
+}
+
+interface SceneInteractionLayerProps {
+  enabled: boolean;
+  focusMarkerPosition: THREE.Vector3 | null;
+  onFocusMarkerDoubleClick: () => void;
+  onEmptySpaceDoubleClick: (position: THREE.Vector3) => void;
 }
 
 const DEFAULT_CAMERA_POSITION = new THREE.Vector3(6, 4, 12);
@@ -266,13 +285,14 @@ function CameraController({
   pendingTweenRef,
   settledFrameRef,
   shouldTweenToSettledRef,
+  focusMarkerPosition,
   stickyTableId,
   stickyNodePosition,
   zoomScale,
   onZoomScaleFromControls,
 }: CameraControllerProps): null {
-  const previousStickyPositionRef = useRef<THREE.Vector3 | null>(null);
-  const previousStickyTableIdRef = useRef<string | null>(null);
+  const previousFocusPositionRef = useRef<THREE.Vector3 | null>(null);
+  const previousFocusKeyRef = useRef<string | null>(null);
   const previousZoomScaleRef = useRef(zoomScale);
   const previousDistanceRef = useRef<number | null>(null);
 
@@ -331,25 +351,32 @@ function CameraController({
       return;
     }
 
-    if (stickyTableId && stickyNodePosition) {
-      if (previousStickyTableIdRef.current !== stickyTableId) {
-        const stickyDelta = stickyNodePosition.clone().sub(controls.target);
-        controls.target.add(stickyDelta);
-        camera.position.add(stickyDelta);
-        previousStickyTableIdRef.current = stickyTableId;
-        previousStickyPositionRef.current = stickyNodePosition.clone();
-      } else if (previousStickyPositionRef.current) {
-        const delta = stickyNodePosition.clone().sub(previousStickyPositionRef.current);
+    const activeFocusPosition = focusMarkerPosition ?? stickyNodePosition;
+    const activeFocusKey = focusMarkerPosition
+      ? 'marker'
+      : stickyTableId && stickyNodePosition
+        ? `sticky:${stickyTableId}`
+        : null;
+
+    if (activeFocusPosition && activeFocusKey) {
+      if (previousFocusKeyRef.current !== activeFocusKey) {
+        const focusDelta = activeFocusPosition.clone().sub(controls.target);
+        controls.target.add(focusDelta);
+        camera.position.add(focusDelta);
+        previousFocusKeyRef.current = activeFocusKey;
+        previousFocusPositionRef.current = activeFocusPosition.clone();
+      } else if (previousFocusPositionRef.current) {
+        const delta = activeFocusPosition.clone().sub(previousFocusPositionRef.current);
         if (delta.lengthSq() > 1e-8) {
           controls.target.add(delta);
           camera.position.add(delta);
         }
-        previousStickyPositionRef.current.copy(stickyNodePosition);
+        previousFocusPositionRef.current.copy(activeFocusPosition);
       }
       controls.update();
     } else {
-      previousStickyTableIdRef.current = null;
-      previousStickyPositionRef.current = null;
+      previousFocusKeyRef.current = null;
+      previousFocusPositionRef.current = null;
     }
 
     if (Math.abs(previousZoomScaleRef.current - zoomScale) > 1e-8) {
@@ -439,6 +466,70 @@ function CameraInitialiser({ cameraRef }: { cameraRef: RefObject<THREE.Camera | 
   return null;
 }
 
+function SceneInteractionLayer({
+  enabled,
+  focusMarkerPosition,
+  onFocusMarkerDoubleClick,
+  onEmptySpaceDoubleClick,
+}: SceneInteractionLayerProps): null {
+  const { camera, gl, scene } = useThree();
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const canvas = gl.domElement;
+    const handleDoubleClick = (event: MouseEvent): void => {
+      if ((event as MouseEvent & { __focusMarkerHandled?: boolean }).__focusMarkerHandled) {
+        return;
+      }
+
+      if (focusMarkerPosition) {
+        const projected = focusMarkerPosition
+          .clone()
+          .add(new THREE.Vector3(0, 0, FOCUS_MARKER_Z_OFFSET))
+          .project(camera);
+        const markerClientX =
+          canvas.getBoundingClientRect().left + (projected.x + 1) * 0.5 * canvas.clientWidth;
+        const markerClientY =
+          canvas.getBoundingClientRect().top + (1 - projected.y) * 0.5 * canvas.clientHeight;
+        const markerHitRadiusPx = Math.max(FOCUS_MARKER_MIN_SCREEN_PX * 0.65, 18);
+        const dx = event.clientX - markerClientX;
+        const dy = event.clientY - markerClientY;
+        if (dx * dx + dy * dy <= markerHitRadiusPx * markerHitRadiusPx) {
+          onFocusMarkerDoubleClick();
+          return;
+        }
+      }
+
+      const position = resolveMarkerPlacementPosition({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        camera,
+        scene,
+        canvasRect: canvas.getBoundingClientRect(),
+        placementPlaneZ: FOCUS_MARKER_PLACEMENT_PLANE_Z,
+      });
+      if (!position) return;
+      onEmptySpaceDoubleClick(position);
+    };
+
+    canvas.addEventListener('dblclick', handleDoubleClick);
+    return () => {
+      canvas.removeEventListener('dblclick', handleDoubleClick);
+    };
+  }, [
+    camera,
+    enabled,
+    focusMarkerPosition,
+    gl,
+    onEmptySpaceDoubleClick,
+    onFocusMarkerDoubleClick,
+    scene,
+  ]);
+
+  return null;
+}
+
 function DraggableTableCard({
   node,
   isSticky,
@@ -489,6 +580,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const [isRearrangeMode, setIsRearrangeMode] = useState(false);
   const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
   const [stickyTableId, setStickyTableId] = useState<string | null>(null);
+  const [focusMarkerState, setFocusMarkerState] = useState<FocusMarkerState | null>(null);
   const [linkDistanceScale, setLinkDistanceScale] = useState(CONNECTION_SCALE_DEFAULT);
   const [connectionHoldDirection, setConnectionHoldDirection] = useState(0);
   const [zoomScale, setZoomScale] = useState(ZOOM_SCALE_DEFAULT);
@@ -509,6 +601,10 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   useEffect(() => {
     stickyTableIdRef.current = stickyTableIdForSchema;
   }, [stickyTableIdForSchema]);
+  const focusMarkerPosition = useMemo(() => {
+    if (!focusMarkerState) return null;
+    return focusMarkerState.schema === schema ? focusMarkerState.position : null;
+  }, [focusMarkerState, schema]);
 
   const handleSettled = useCallback(
     (settledNodes: SimulationNode[]) => {
@@ -633,6 +729,11 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     if (!hoverContext) return [];
     return getReferencedTablesForTable(schema, hoverContext.tableId);
   }, [hoverContext, schema]);
+  const focusMode = useMemo(() => {
+    if (focusMarkerPosition) return 'marker';
+    if (effectiveStickyTableId) return `sticky:${effectiveStickyTableId}`;
+    return 'none';
+  }, [focusMarkerPosition, effectiveStickyTableId]);
   const zoomDisplayValue = useMemo(() => 1 / Math.max(zoomScale, 1e-6), [zoomScale]);
   const handleZoomScaleFromControls = useCallback((nextZoomScale: number) => {
     setZoomScale((current) => {
@@ -681,13 +782,14 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   }, [zoomHoldDirection]);
 
   const handleResetView = useCallback((): void => {
-    if (stickyNodePosition) {
+    const activeFocusPosition = focusMarkerPosition ?? stickyNodePosition;
+    if (activeFocusPosition) {
       const controls = controlsRef.current;
       if (controls) {
         const offset = controls.object.position.clone().sub(controls.target);
         pendingTweenRef.current = {
-          target: stickyNodePosition.clone(),
-          position: stickyNodePosition.clone().add(offset),
+          target: activeFocusPosition.clone(),
+          position: activeFocusPosition.clone().add(offset),
         };
         return;
       }
@@ -695,7 +797,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
 
     const resetFrame = settledFrameRef.current ?? computeCameraFrameFromPoints(framePoints, 60);
     pendingTweenRef.current = resetFrame;
-  }, [framePoints, stickyNodePosition]);
+  }, [focusMarkerPosition, framePoints, stickyNodePosition]);
 
   const handleFocusSticky = useCallback(
     (tableId: string): void => {
@@ -719,16 +821,34 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const handleHeaderDoubleClick = useCallback(
     (tableId: string): void => {
       const currentStickyTableId = stickyTableIdRef.current;
-      if (currentStickyTableId === tableId) {
+      const nextStickyTableId = toggleStickyTable(currentStickyTableId, tableId);
+      if (nextStickyTableId === null) {
         setStickyTableId(null);
         return;
       }
 
-      setStickyTableId(tableId);
+      const stickyState = activateStickyFocus(nextStickyTableId);
+      setFocusMarkerState(null);
+      setStickyTableId(stickyState.stickyTableId);
       handleFocusSticky(tableId);
     },
     [handleFocusSticky],
   );
+
+  const handleEmptySpaceDoubleClick = useCallback(
+    (position: THREE.Vector3): void => {
+      const markerState = activateFocusMarker(position);
+      setStickyTableId(markerState.stickyTableId);
+      if (markerState.focusMarkerPosition) {
+        setFocusMarkerState({ schema, position: markerState.focusMarkerPosition });
+      }
+    },
+    [schema],
+  );
+
+  const handleRemoveFocusMarker = useCallback((): void => {
+    setFocusMarkerState(null);
+  }, []);
 
   const handleDragStart = useCallback(
     (id: string, pos: THREE.Vector3) => {
@@ -791,7 +911,11 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+      data-testid="scene-root"
+      data-focus-mode={focusMode}
+    >
       <Canvas
         style={{ width: '100%', height: '100%' }}
         camera={{
@@ -814,12 +938,19 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           enableDamping
           dampingFactor={0.1}
         />
+        <SceneInteractionLayer
+          enabled={!isRearrangeMode}
+          focusMarkerPosition={focusMarkerPosition}
+          onFocusMarkerDoubleClick={handleRemoveFocusMarker}
+          onEmptySpaceDoubleClick={handleEmptySpaceDoubleClick}
+        />
         <CameraController
           tweenStateRef={tweenStateRef}
           controlsRef={controlsRef}
           pendingTweenRef={pendingTweenRef}
           settledFrameRef={settledFrameRef}
           shouldTweenToSettledRef={shouldTweenToSettledRef}
+          focusMarkerPosition={focusMarkerPosition}
           stickyTableId={effectiveStickyTableId}
           stickyNodePosition={stickyNodePosition}
           zoomScale={zoomScale}
@@ -866,6 +997,9 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             />
           );
         })}
+        {focusMarkerPosition && (
+          <FocusMarker position={focusMarkerPosition} onRemove={handleRemoveFocusMarker} />
+        )}
       </Canvas>
 
       <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />

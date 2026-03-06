@@ -39,6 +39,7 @@ import {
   TITLE_SCALE_MAX,
 } from './constants';
 import { estimateTableCardDimensions } from './tableCardMetrics';
+import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
 
 interface DragHandlers {
   onPointerDown: (e: ThreeEvent<PointerEvent>) => void;
@@ -135,6 +136,9 @@ export default function TableCard({
   const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(cardGeometry), [cardGeometry]);
 
   useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.userData[SCENE_INTERACTION_ROLE] = SCENE_ROLE_TABLE_CARD;
+    }
     if (dragHitMaterialRef.current) dragHitMaterialRef.current.depthWrite = false;
     if (tableHitMaterialRef.current) tableHitMaterialRef.current.depthWrite = false;
     if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
