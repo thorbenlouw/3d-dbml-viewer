@@ -1,0 +1,49 @@
+// Multi-group fixture: commerce group, catalog group, one ungrouped audit table
+// Cross-group refs: orders -> products (commerce -> catalog)
+
+Table orders {
+  id integer [pk]
+  customer_id integer [not null, ref: > customers.id]
+  product_id integer [not null, ref: > products.id]
+  quantity integer [not null]
+  created_at timestamp [not null]
+}
+
+Table customers {
+  id integer [pk]
+  name varchar [not null]
+  email varchar [not null, unique]
+}
+
+Table products {
+  id integer [pk]
+  name varchar [not null]
+  price decimal [not null]
+  category_id integer [not null, ref: > categories.id]
+}
+
+Table categories {
+  id integer [pk]
+  name varchar [not null]
+  parent_id integer [null, ref: > categories.id]
+}
+
+// Ungrouped — deliberately left out of any TableGroup
+Table audit_log {
+  id integer [pk]
+  table_name varchar [not null]
+  record_id integer [not null]
+  action varchar [not null, note: 'insert | update | delete']
+  performed_by varchar [null]
+  created_at timestamp [not null]
+}
+
+TableGroup commerce {
+  orders
+  customers
+}
+
+TableGroup catalog {
+  products
+  categories
+}

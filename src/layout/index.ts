@@ -9,6 +9,14 @@ import {
   type SimulationLinkDatum,
 } from 'd3-force-3d';
 import type { ParsedSchema, LayoutNode } from '@/types';
+import { buildGroupDescriptors, placeGroups, computeGroupSeedPositions } from './groupLayout';
+
+export {
+  buildGroupDescriptors,
+  placeGroups,
+  computeGroupSeedPositions,
+  computeGroupBoundaries,
+} from './groupLayout';
 
 interface SimNode extends SimulationNodeDatum {
   id: string;
@@ -40,8 +48,19 @@ export function seedNodePositions(tables: { id: string; name: string }[]): SimNo
 }
 
 export function computeLayout(schema: ParsedSchema): LayoutNode[] {
-  // Deterministic initial positions — evenly spaced on a unit sphere
-  const nodes: SimNode[] = seedNodePositions(schema.tables);
+  // Group-aware initial seeding so grouped tables start near their group center
+  const descriptors = buildGroupDescriptors(schema);
+  const groupCenters = placeGroups(descriptors);
+  const seedPositions = computeGroupSeedPositions(schema, groupCenters);
+
+  const nodes: SimNode[] = schema.tables.map((table) => {
+    const seed = seedPositions.get(table.id);
+    if (seed) {
+      return { id: table.id, name: table.name, x: seed.x, y: seed.y, z: seed.z };
+    }
+    // Fallback for any table not covered
+    return { id: table.id, name: table.name, x: 0, y: 0, z: 0 };
+  });
 
   const links: SimLink[] = schema.refs.map((ref) => ({
     source: ref.sourceId,
@@ -67,7 +86,6 @@ export function computeLayout(schema: ParsedSchema): LayoutNode[] {
   }
 
   // Normalize positions so the bounding sphere radius is TARGET_RADIUS world units.
-  // This keeps the scene at a predictable scale regardless of force parameters.
   const TARGET_RADIUS = 3;
   const cx = nodes.reduce((s, n) => s + n.x, 0) / nodes.length;
   const cy = nodes.reduce((s, n) => s + n.y, 0) / nodes.length;

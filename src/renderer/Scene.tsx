@@ -52,6 +52,8 @@ import LoadFileButton from '@/ui/LoadFileButton';
 import FocusMarker from './FocusMarker';
 import { resolveMarkerPlacementPosition } from './interaction';
 import { activateFocusMarker, activateStickyFocus, toggleStickyTable } from './focusMode';
+import TableGroupBoundary from './TableGroupBoundary';
+import { computeGroupBoundaries } from '@/layout';
 
 interface SceneProps {
   schema: ParsedSchema;
@@ -638,6 +640,20 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const cardNodes = useMemo(() => buildCardNodes(simNodes, schema), [simNodes, schema]);
   const linkModels = useMemo(() => buildLinkModels(schema), [schema]);
   const cardById = useMemo(() => new Map(cardNodes.map((node) => [node.id, node])), [cardNodes]);
+
+  const cardDimensionMap = useMemo(() => {
+    const map = new Map<string, { width: number; height: number; depth: number }>();
+    for (const cardNode of cardNodes) {
+      map.set(cardNode.id, estimateTableCardDimensions(cardNode.table));
+    }
+    return map;
+  }, [cardNodes]);
+
+  const groupBoundaries = useMemo(
+    () => computeGroupBoundaries(schema, cardNodes, cardDimensionMap),
+    [schema, cardNodes, cardDimensionMap],
+  );
+
   const effectiveStickyTableId = useMemo(() => {
     if (!stickyTableIdForSchema || !cardById.has(stickyTableIdForSchema)) return null;
     return stickyTableIdForSchema;
@@ -685,8 +701,22 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       );
     }
 
+    // Include group boundary extents so Reset View fits all groups
+    for (const b of groupBoundaries) {
+      points.push(
+        new THREE.Vector3(b.centerX - b.width * 0.5, b.centerY - b.height * 0.5, b.centerZ),
+      );
+      points.push(
+        new THREE.Vector3(
+          b.centerX + b.width * 0.5,
+          b.centerY + b.height * 0.5,
+          b.centerZ + b.depth,
+        ),
+      );
+    }
+
     return points;
-  }, [cardNodes, linkModels, cardById]);
+  }, [cardNodes, linkModels, cardById, groupBoundaries]);
 
   const tweenStateRef = useRef<CameraTweenState>({
     active: false,
@@ -938,6 +968,10 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             />
           );
         })}
+
+        {groupBoundaries.map((boundary) => (
+          <TableGroupBoundary key={boundary.groupId} boundary={boundary} />
+        ))}
 
         {cardNodes.map((node) => {
           const highlightedColumn =

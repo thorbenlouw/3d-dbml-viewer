@@ -37,6 +37,27 @@ export interface ParsedSchema {
   projectName?: string;
 }
 
+export interface TableGroupDescriptor {
+  id: string;
+  name: string;
+  tableIds: string[];
+  // estimated half-extents in world units (before placement), including padding
+  halfWidth: number;
+  halfHeight: number;
+  halfDepth: number;
+}
+
+export interface TableGroupBoundingBox {
+  groupId: string;
+  groupName: string;
+  centerX: number;
+  centerY: number;
+  centerZ: number;
+  width: number;
+  height: number;
+  depth: number;
+}
+
 export interface LayoutNode {
   id: string;
   name: string;

@@ -12,6 +12,7 @@ import {
   type LinkForce,
 } from 'd3-force-3d';
 import type { ParsedSchema, SimulationNode } from '@/types';
+import { buildGroupDescriptors, placeGroups, computeGroupSeedPositions } from './groupLayout';
 
 const BASE_LINK_DISTANCE = 1.5;
 const STICKY_LINK_DISTANCE_MULTIPLIER = 0.65;
@@ -22,6 +23,7 @@ const STICKY_PLANE_PULL = 1.7;
 const STICKY_UNRELATED_MIN_DISTANCE = 4.6;
 const STICKY_UNRELATED_PUSH = 1.15;
 const BASE_CHARGE_STRENGTH = -15;
+const GROUP_COHESION_STRENGTH = 0.04;
 
 function computeChargeStrength(scale: number): number {
   // Much lower repulsion at small spacing values, stronger repulsion when spread out.
@@ -73,18 +75,23 @@ export function computeEffectiveLinkDistance(params: {
   return base * NON_STICKY_LINK_DISTANCE_MULTIPLIER;
 }
 
-function buildLiveNodes(tables: { id: string; name: string }[]): D3Node[] {
-  const n = tables.length;
-  return tables.map((table, i) => {
-    const phi = Math.acos(1 - (2 * (i + 0.5)) / n);
-    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-    const r = 2;
+function buildLiveNodes(schema: ParsedSchema): D3Node[] {
+  // Group-aware seeding: place tables near their group's world-space center
+  const descriptors = buildGroupDescriptors(schema);
+  const groupCenters = placeGroups(descriptors);
+  const seedPositions = computeGroupSeedPositions(schema, groupCenters);
+
+  return schema.tables.map((table) => {
+    const seed = seedPositions.get(table.id);
+    const x = seed?.x ?? 0;
+    const y = seed?.y ?? 0;
+    const z = seed?.z ?? 0;
     return {
       id: table.id,
       name: table.name,
-      x: r * Math.sin(phi) * Math.cos(theta),
-      y: r * Math.sin(phi) * Math.sin(theta),
-      z: r * Math.cos(phi),
+      x,
+      y,
+      z,
       fx: null,
       fy: null,
       fz: null,
@@ -204,7 +211,7 @@ export function useForceSimulation(
 
   // Initialise with seeded positions so the first render has data immediately
   const [nodes, setNodes] = useState<SimulationNode[]>(() =>
-    buildLiveNodes(schema.tables).map(toSimulationNode),
+    buildLiveNodes(schema).map(toSimulationNode),
   );
 
   const flushState = useCallback(() => {
@@ -212,7 +219,7 @@ export function useForceSimulation(
   }, []);
 
   useEffect(() => {
-    const liveNodes = buildLiveNodes(schema.tables);
+    const liveNodes = buildLiveNodes(schema);
     liveNodesRef.current = liveNodes;
     nodeMapRef.current = new Map(liveNodes.map((n) => [n.id, n]));
 
@@ -261,6 +268,51 @@ export function useForceSimulation(
       // no-op, force operates on refs each tick
     };
 
+    // Build group membership map for cohesion force
+    const tableGroupMap = new Map<string, string>();
+    for (const table of schema.tables) {
+      if (table.tableGroup) tableGroupMap.set(table.id, table.tableGroup);
+    }
+    const groupMembersMap = new Map<string, string[]>();
+    for (const [tableId, groupId] of tableGroupMap) {
+      const members = groupMembersMap.get(groupId) ?? [];
+      members.push(tableId);
+      groupMembersMap.set(groupId, members);
+    }
+
+    // Weak cohesion force: pull tables toward their group's centroid
+    const groupCohesionForce = (alpha: number): void => {
+      for (const members of groupMembersMap.values()) {
+        if (members.length < 2) continue;
+        let sumX = 0;
+        let sumY = 0;
+        let sumZ = 0;
+        let count = 0;
+        for (const id of members) {
+          const node = nodeMapRef.current.get(id);
+          if (!node) continue;
+          sumX += node.x;
+          sumY += node.y;
+          sumZ += node.z;
+          count++;
+        }
+        if (count === 0) continue;
+        const cx = sumX / count;
+        const cy = sumY / count;
+        const cz = sumZ / count;
+        for (const id of members) {
+          const node = nodeMapRef.current.get(id);
+          if (!node || node.isPinned) continue;
+          node.vx = (node.vx ?? 0) + (cx - node.x) * GROUP_COHESION_STRENGTH * alpha;
+          node.vy = (node.vy ?? 0) + (cy - node.y) * GROUP_COHESION_STRENGTH * alpha;
+          node.vz = (node.vz ?? 0) + (cz - node.z) * GROUP_COHESION_STRENGTH * alpha;
+        }
+      }
+    };
+    groupCohesionForce.initialize = () => {
+      // no-op
+    };
+
     const chargeForce = forceManyBody<D3Node>().strength(() =>
       computeChargeStrength(linkDistanceScaleRef.current),
     );
@@ -269,6 +321,7 @@ export function useForceSimulation(
       .force('charge', chargeForce)
       .force('link', linkForce)
       .force('sticky-focus', stickyForce)
+      .force('group-cohesion', groupCohesionForce)
       .force('cx', forceX(0).strength(0.1))
       .force('cy', forceY(0).strength(0.1))
       .force('cz', forceZ(0).strength(0.1))

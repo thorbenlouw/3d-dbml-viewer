@@ -65,6 +65,8 @@ export default [
             'receiveShadow',
             'object',
             'dispose',
+            'side',
+            'depthWrite',
           ],
         },
       ],

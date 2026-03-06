@@ -3,13 +3,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { parseDatabaseSchema } from '@/parser';
-import { computeLayout } from '@/layout';
+import { computeLayout, buildGroupDescriptors, placeGroups } from '@/layout';
 import { HARD_CODED_DBML } from '@/data/schema.dbml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
+const tablegroupsDbml = readFileSync(resolve(__dirname, '../fixtures/tablegroups.dbml'), 'utf-8');
 
 describe('parser -> layout pipeline', () => {
   it('returns exactly 8 LayoutNode objects', () => {
@@ -82,5 +83,74 @@ describe('parser -> layout pipeline', () => {
     expect(follows?.note).toBe(
       'Adjacency list capturing social follow relationships between users',
     );
+  });
+});
+
+describe('tablegroups.dbml: grouped layout pipeline', () => {
+  it('parses 5 tables (2 grouped pairs + 1 ungrouped)', () => {
+    const schema = parseDatabaseSchema(tablegroupsDbml);
+    expect(schema.tables).toHaveLength(5);
+  });
+
+  it('assigns correct group memberships', () => {
+    const schema = parseDatabaseSchema(tablegroupsDbml);
+    const orders = schema.tables.find((t) => t.name === 'orders');
+    const customers = schema.tables.find((t) => t.name === 'customers');
+    const products = schema.tables.find((t) => t.name === 'products');
+    const categories = schema.tables.find((t) => t.name === 'categories');
+    const auditLog = schema.tables.find((t) => t.name === 'audit_log');
+
+    expect(orders?.tableGroup).toBe('commerce');
+    expect(customers?.tableGroup).toBe('commerce');
+    expect(products?.tableGroup).toBe('catalog');
+    expect(categories?.tableGroup).toBe('catalog');
+    expect(auditLog?.tableGroup).toBeUndefined();
+  });
+
+  it('computeLayout returns 5 nodes with finite positions', () => {
+    const schema = parseDatabaseSchema(tablegroupsDbml);
+    const nodes = computeLayout(schema);
+    expect(nodes).toHaveLength(5);
+    for (const node of nodes) {
+      expect(Number.isFinite(node.x)).toBe(true);
+      expect(Number.isFinite(node.y)).toBe(true);
+      expect(Number.isFinite(node.z)).toBe(true);
+    }
+  });
+
+  it('buildGroupDescriptors returns two group descriptors', () => {
+    const schema = parseDatabaseSchema(tablegroupsDbml);
+    const descriptors = buildGroupDescriptors(schema);
+    expect(descriptors).toHaveLength(2);
+    const names = descriptors.map((d) => d.name).sort();
+    expect(names).toEqual(['catalog', 'commerce']);
+  });
+
+  it('placeGroups assigns non-overlapping X ranges for the two groups', () => {
+    const schema = parseDatabaseSchema(tablegroupsDbml);
+    const descriptors = buildGroupDescriptors(schema);
+    const centers = placeGroups(descriptors);
+
+    const catalogDesc = descriptors.find((d) => d.id === 'catalog')!;
+    const commerceDesc = descriptors.find((d) => d.id === 'commerce')!;
+    const catalogCenter = centers.get('catalog')!;
+    const commerceCenter = centers.get('commerce')!;
+
+    const catalogMin = catalogCenter.x - catalogDesc.halfWidth;
+    const catalogMax = catalogCenter.x + catalogDesc.halfWidth;
+    const commerceMin = commerceCenter.x - commerceDesc.halfWidth;
+    const commerceMax = commerceCenter.x + commerceDesc.halfWidth;
+
+    // The two X ranges must not overlap
+    const overlaps = catalogMax > commerceMin && commerceMax > catalogMin;
+    expect(overlaps).toBe(false);
+  });
+
+  it('hard-coded schema with TableGroups produces two group descriptors', () => {
+    const schema = parseDatabaseSchema(HARD_CODED_DBML);
+    const descriptors = buildGroupDescriptors(schema);
+    expect(descriptors).toHaveLength(2);
+    const names = descriptors.map((d) => d.name).sort();
+    expect(names).toEqual(['dimensions', 'facts']);
   });
 });
