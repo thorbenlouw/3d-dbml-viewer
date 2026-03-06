@@ -64,10 +64,10 @@ function truncate(value: string, maxChars: number): string {
 
 function getBadges(column: ParsedColumn): FieldBadge[] {
   return [
-    { label: 'PK', active: column.isPrimaryKey },
-    { label: 'FK', active: column.isForeignKey },
-    { label: 'NN', active: column.isNotNull },
-    { label: 'UQ', active: column.isUnique },
+    { label: '🔑', active: column.isPrimaryKey },
+    { label: '🔗', active: column.isForeignKey },
+    { label: '❗', active: column.isNotNull },
+    { label: '💎', active: column.isUnique },
   ];
 }
 

@@ -10,7 +10,7 @@
 10. Clean up presentation on right 
 11. Render project names and descriptions from DBML `Project` blocks. Render project notes
 12. Explicitly check that `TablePartials` are supported in the load
-13. Check for `default`  values and render it in the table card
+13. Check for `default`  values and render it in the table card (↩️)
 14. Render `checks` on the table card in a section (hovers on the name of the check to see the details revealed in the nav panel tooltip, with fields highlighted)
 15. Render `indexes` on the table card ina section (hovers on the name of the index or other icon to see the details revealed in the nav panel tooltip, with fields highlighted)
 16. Hovering on a connection should show the referenced fields being highlighted in the tables 
