@@ -43,7 +43,7 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
         aria-label="Load a DBML file from disk"
         style={{
           position: 'fixed',
-          bottom: '1rem',
+          bottom: '2.5rem',
           left: '1rem',
           backgroundColor: '#334155',
           color: '#ffffff',

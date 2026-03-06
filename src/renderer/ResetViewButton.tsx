@@ -12,7 +12,7 @@ export default function ResetViewButton({ onClick }: ResetViewButtonProps): Reac
       aria-label="Reset camera to overview"
       style={{
         position: 'fixed',
-        bottom: '1rem',
+        bottom: '2.5rem',
         right: '1rem',
         backgroundColor: '#1C95D3',
         color: '#ffffff',

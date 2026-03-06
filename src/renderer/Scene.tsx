@@ -947,7 +947,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
         style={{
           position: 'fixed',
           right: '1rem',
-          bottom: '4.2rem',
+          bottom: '5.7rem',
           display: 'grid',
           gap: '0.5rem',
           zIndex: 40,
