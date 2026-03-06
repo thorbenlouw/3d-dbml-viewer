@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
+const withProjectDbml = readFileSync(resolve(__dirname, '../fixtures/with-project.dbml'), 'utf-8');
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -198,5 +199,22 @@ describe('parseDatabaseSchema', () => {
     const schema = parseDatabaseSchema(dbml);
     const users = schema.tables.find((table) => table.name === 'users');
     expect(users?.tableGroup).toBeUndefined();
+  });
+
+  describe('project name extraction', () => {
+    it('extracts projectName from a DBML string with a Project block', () => {
+      const schema = parseDatabaseSchema(withProjectDbml);
+      expect(schema.projectName).toBe('MyProject');
+    });
+
+    it('returns projectName === undefined when no Project block is present', () => {
+      const dbml = `
+        Table users {
+          id integer [pk]
+        }
+      `;
+      const schema = parseDatabaseSchema(dbml);
+      expect(schema.projectName).toBeUndefined();
+    });
   });
 });

@@ -1,0 +1,9 @@
+Project MyProject {
+  database_type: 'PostgreSQL'
+  Note: 'Demo project for testing project name extraction'
+}
+
+Table users {
+  id integer [pk]
+  name varchar
+}

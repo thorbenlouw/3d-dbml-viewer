@@ -14,6 +14,8 @@ interface ExampleSpec {
 
 const examples: ExampleSpec[] = [
   { name: 'blog', expectedTableCount: 5 },
+  { name: 'dbml-feature-showcase', expectedTableCount: 7 },
+  { name: 'dbml-warehouse-ops', expectedTableCount: 8 },
   { name: 'ecommerce', expectedTableCount: 10 },
   { name: 'saas-platform', expectedTableCount: 19 },
   { name: 'multi-schema-erp', expectedTableCount: 25 },
