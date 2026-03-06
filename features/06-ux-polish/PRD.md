@@ -49,6 +49,10 @@ Five cosmetic UX issues degrade the experience when exploring schemas in the 3D 
    mode, not Re-arrange mode) triggers a smooth camera tween that centres and
    zooms in to that table, bringing it front-and-centre.
 
+6. **Amendment: fixed note icon placement** — the table note icon remains pinned
+   to the top-right corner of the table card header and must not scale, drift, or
+   reposition based on title scaling behaviour.
+
 ## Non-Goals
 
 - Saving camera position across sessions.
@@ -68,6 +72,7 @@ Five cosmetic UX issues degrade the experience when exploring schemas in the 3D 
 | 6   | Double-click fly-to does not trigger in Re-arrange mode (where double-click already unpins).                                                                                        |
 | 7   | All existing unit and integration tests continue to pass.                                                                                                                           |
 | 8   | Visual correctness verified with Playwright MCP screenshot.                                                                                                                         |
+| 9   | For noted tables, the note icon stays fixed at the card header top-right corner at all zoom levels and title scales.                                                                |
 
 ## Design Decisions
 
@@ -108,6 +113,12 @@ apparent text size from the camera's perspective.
 
 Scale factor: `clamp(1 + k * (dist - DISTANCE_NEAR), 1, MAX_TITLE_SCALE)` where
 `k` is tuned so the text reaches `MAX_TITLE_SCALE` (e.g. 2.5×) at `DISTANCE_FAR`.
+
+### Amendment: note icon anchoring
+
+The note icon should not be coupled to title scale transforms. It must be
+rendered at a fixed local position in the table card header's top-right corner.
+Title text may overlap the icon at extreme scales; this is acceptable.
 
 ### Tighter link distance
 
@@ -152,8 +163,10 @@ src/
    auto-fit overview, not the current orbited position.
 3. Zoom out until 20+ tables are visible. Table titles should remain legible
    (not tiny specks) even though table bodies are small.
-4. Inspect table spacing — related tables in the insurance schema should be
+4. On a table with a note, verify the icon remains pinned to the top-right
+   header corner while zooming in/out and while title scaling changes.
+5. Inspect table spacing — related tables in the insurance schema should be
    visually close, not separated by large gaps.
-5. Double-click a table title in Navigate mode. Camera flies to that table,
+6. Double-click a table title in Navigate mode. Camera flies to that table,
    centred and close-up.
-6. Screenshot saved to `test-evidence/ux-polish.png`.
+7. Screenshot saved to `test-evidence/ux-polish.png`.

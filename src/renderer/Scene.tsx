@@ -3,6 +3,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  useEffect,
   type ReactElement,
   type RefObject,
   type ComponentRef,
@@ -71,6 +72,9 @@ interface DraggableTableCardProps {
   onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
   onFlyTo?: (tableId: string) => void;
 }
+
+const DEFAULT_CAMERA_POSITION = new THREE.Vector3(6, 4, 12);
+const DEFAULT_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
 
 function easeInOutCubic(t: number): number {
   if (t < 0.5) return 4 * t * t * t;
@@ -213,6 +217,19 @@ function computeCameraFrameFromPoints(points: THREE.Vector3[], fovDeg: number): 
   return { position, target };
 }
 
+function CameraInitialiser({ cameraRef }: { cameraRef: RefObject<THREE.Camera | null> }): null {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    cameraRef.current = camera;
+    return () => {
+      cameraRef.current = null;
+    };
+  }, [camera, cameraRef]);
+
+  return null;
+}
+
 function DraggableTableCard({
   node,
   highlightedColumn,
@@ -262,6 +279,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
   const settledFrameRef = useRef<CameraFrame | null>(null);
   const hasFittedOnceRef = useRef<boolean>(false);
   const shouldTweenToSettledRef = useRef<boolean>(false);
@@ -294,14 +312,18 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       settledFrameRef.current = frame;
 
       const controls = controlsRef.current;
+      const camera = cameraRef.current;
       if (!hasFittedOnceRef.current) {
         // First settlement: snap camera immediately
-        if (controls) {
-          controls.object.position.copy(frame.position);
+        if (camera && controls) {
+          camera.position.copy(frame.position);
           controls.target.copy(frame.target);
           controls.update();
-          hasFittedOnceRef.current = true;
+        } else {
+          // Refs can be null briefly during initial mount; queue an immediate tween fallback.
+          shouldTweenToSettledRef.current = true;
         }
+        hasFittedOnceRef.current = true;
       } else {
         // Subsequent settlement (new file loaded): request tween via flag
         shouldTweenToSettledRef.current = true;
@@ -356,14 +378,12 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     return points;
   }, [cardNodes, linkModels, cardById]);
 
-  const initialFrame = useMemo(() => computeCameraFrameFromPoints(framePoints, 60), [framePoints]);
-
   const tweenStateRef = useRef<CameraTweenState>({
     active: false,
-    startPosition: initialFrame.position.clone(),
-    endPosition: initialFrame.position.clone(),
-    startTarget: initialFrame.target.clone(),
-    endTarget: initialFrame.target.clone(),
+    startPosition: DEFAULT_CAMERA_POSITION.clone(),
+    endPosition: DEFAULT_CAMERA_POSITION.clone(),
+    startTarget: DEFAULT_CAMERA_TARGET.clone(),
+    endTarget: DEFAULT_CAMERA_TARGET.clone(),
     startTime: 0,
   });
 
@@ -460,15 +480,20 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       <Canvas
         style={{ width: '100%', height: '100%' }}
         camera={{
-          position: [initialFrame.position.x, initialFrame.position.y, initialFrame.position.z],
+          position: [
+            DEFAULT_CAMERA_POSITION.x,
+            DEFAULT_CAMERA_POSITION.y,
+            DEFAULT_CAMERA_POSITION.z,
+          ],
           fov: 60,
         }}
         gl={{ preserveDrawingBuffer: true }}
       >
+        <CameraInitialiser cameraRef={cameraRef} />
         <color attach="background" args={[SCENE_BG_COLOR]} />
         <OrbitControls
           ref={controlsRef}
-          target={[initialFrame.target.x, initialFrame.target.y, initialFrame.target.z]}
+          target={[DEFAULT_CAMERA_TARGET.x, DEFAULT_CAMERA_TARGET.y, DEFAULT_CAMERA_TARGET.z]}
           minDistance={3}
           maxDistance={40}
           enableDamping

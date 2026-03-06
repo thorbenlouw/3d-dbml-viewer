@@ -243,24 +243,19 @@ export default function TableCard({
         >
           {truncate(node.table.name, 32)}
         </Text>
+        {node.table.note && (
+          <Text
+            font={SCENE_FONT_REGULAR}
+            color={NOTE_HIGHLIGHT_COLOR}
+            fontSize={NOTE_ICON_SIZE}
+            anchorX="center"
+            anchorY="middle"
+            position={[dimensions.width / 2 - CARD_HORIZONTAL_PADDING, 0, 0.008]}
+          >
+            {NOTE_ICON_CHAR}
+          </Text>
+        )}
       </group>
-
-      {node.table.note && (
-        <Text
-          font={SCENE_FONT_REGULAR}
-          color={NOTE_HIGHLIGHT_COLOR}
-          fontSize={NOTE_ICON_SIZE}
-          anchorX="center"
-          anchorY="middle"
-          position={[
-            dimensions.width / 2 - CARD_HORIZONTAL_PADDING,
-            headerY,
-            dimensions.depth / 2 + 0.02,
-          ]}
-        >
-          {NOTE_ICON_CHAR}
-        </Text>
-      )}
 
       {node.table.columns.map((column, index) => {
         const rowTop =
