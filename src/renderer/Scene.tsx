@@ -44,6 +44,7 @@ import { useForceSimulation } from '@/layout/useForceSimulation';
 import NavigationPanel from './NavigationPanel';
 import {
   getReferencesForContext,
+  getInboundReferencesForContext,
   shouldHighlightRelationship,
   type ReferencesForContext,
 } from './hoverContext';
@@ -700,6 +701,11 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     if (!hoverContext) return null;
     return getReferencesForContext(schema, hoverContext);
   }, [hoverContext, schema]);
+  const enrichedHoverContext = useMemo<HoverContext | null>(() => {
+    if (!hoverContext) return null;
+    const inbound = getInboundReferencesForContext(schema, hoverContext);
+    return { ...hoverContext, ...inbound };
+  }, [hoverContext, schema]);
   const focusMode = useMemo(() => {
     if (focusMarkerPosition) return 'marker';
     if (effectiveStickyTableId) return `sticky:${effectiveStickyTableId}`;
@@ -859,7 +865,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           </div>
         </div>
         <NavigationPanel
-          hoverContext={hoverContext}
+          hoverContext={enrichedHoverContext}
           references={references}
           projectName={schema.projectName}
         />
@@ -956,7 +962,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       </Canvas>
 
       <NavigationPanel
-        hoverContext={hoverContext}
+        hoverContext={enrichedHoverContext}
         references={references}
         projectName={schema.projectName}
       />

@@ -57,6 +57,20 @@ const ALL_ATTRIBUTES: Array<{
   { icon: '💎', label: 'Unique', key: 'isUnique' },
 ];
 
+/** Bolds the table (or schema.table) part of a label, leaving the field plain. */
+function formatReferenceLabel(label: string): ReactElement {
+  const lastDot = label.lastIndexOf('.');
+  if (lastDot === -1) {
+    return <strong>{label}</strong>;
+  }
+  return (
+    <>
+      <strong>{label.substring(0, lastDot)}</strong>
+      {label.substring(lastDot)}
+    </>
+  );
+}
+
 function getHoverTargetLabel(hoverContext: HoverContext | null): string {
   if (!hoverContext) return 'None';
   if (hoverContext.columnName) {
@@ -66,9 +80,6 @@ function getHoverTargetLabel(hoverContext: HoverContext | null): string {
 }
 
 function ReferenceList({ items }: { items: ReferenceItem[] }): ReactElement {
-  if (items.length === 0) {
-    return <p style={VALUE_STYLE}>No outgoing references.</p>;
-  }
   return (
     <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.2rem' }}>
       {items.map((item) => (
@@ -81,7 +92,7 @@ function ReferenceList({ items }: { items: ReferenceItem[] }): ReactElement {
             gap: '0.5rem',
           }}
         >
-          <span>{item.label}</span>
+          <span>{formatReferenceLabel(item.label)}</span>
           {item.cardinality && (
             <span style={{ opacity: 0.65, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
               {item.cardinality}
@@ -98,8 +109,7 @@ export default function NavigationPanel({
   references,
   projectName,
 }: NavigationPanelProps): ReactElement {
-  const groupLabel = hoverContext?.tableGroup ?? '-';
-  const noteValue = hoverContext?.note?.trim() || '-';
+  const noteValue = hoverContext?.note?.trim() || null;
 
   const attrs = hoverContext?.columnAttributes;
   const activeAttrs: AttributeEntry[] = attrs ? ALL_ATTRIBUTES.filter((a) => attrs[a.key]) : [];
@@ -145,12 +155,14 @@ export default function NavigationPanel({
         </div>
       </section>
 
-      <section style={{ marginBottom: '0.85rem' }}>
-        <p style={LABEL_STYLE}>Table group</p>
-        <div style={SECTION_PANEL_STYLE}>
-          <p style={VALUE_STYLE}>{groupLabel}</p>
-        </div>
-      </section>
+      {hoverContext?.tableGroup && (
+        <section style={{ marginBottom: '0.85rem' }}>
+          <p style={LABEL_STYLE}>Table group</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <p style={VALUE_STYLE}>{hoverContext.tableGroup}</p>
+          </div>
+        </section>
+      )}
 
       {activeAttrs.length > 0 && (
         <section style={{ marginBottom: '0.85rem' }}>
@@ -166,28 +178,49 @@ export default function NavigationPanel({
         </section>
       )}
 
-      <section style={{ marginBottom: '0.85rem' }}>
-        <p style={LABEL_STYLE}>{references?.title ?? 'Referenced tables'}</p>
-        <div style={SECTION_PANEL_STYLE}>
-          <ReferenceList items={references?.items ?? []} />
-        </div>
-      </section>
+      {references?.items.length ? (
+        <section style={{ marginBottom: '0.85rem' }}>
+          <p style={LABEL_STYLE}>{references.title}</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <ReferenceList items={references.items} />
+          </div>
+        </section>
+      ) : null}
 
-      <section>
-        <p style={LABEL_STYLE}>Note</p>
-        <div style={SECTION_PANEL_STYLE}>
-          <p
-            style={{
-              ...VALUE_STYLE,
-              lineHeight: 1.45,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
-            {noteValue}
-          </p>
-        </div>
-      </section>
+      {hoverContext?.referencedByFields?.length || hoverContext?.referencedByTables?.length ? (
+        <section style={{ marginBottom: '0.85rem' }}>
+          <p style={LABEL_STYLE}>Referenced By</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.2rem' }}>
+              {(hoverContext.referencedByFields ?? hoverContext.referencedByTables ?? []).map(
+                (item) => (
+                  <li key={item} style={VALUE_STYLE}>
+                    {formatReferenceLabel(item)}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+
+      {noteValue && (
+        <section>
+          <p style={LABEL_STYLE}>Note</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <p
+              style={{
+                ...VALUE_STYLE,
+                lineHeight: 1.45,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {noteValue}
+            </p>
+          </div>
+        </section>
+      )}
     </aside>
   );
 }

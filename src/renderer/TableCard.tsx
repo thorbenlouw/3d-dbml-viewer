@@ -85,7 +85,7 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
     tableName: node.table.name,
     tableGroup: node.table.tableGroup,
     columnName: column.name,
-    note: column.note ?? node.table.note,
+    note: column.note,
     columnAttributes: {
       isPrimaryKey: column.isPrimaryKey,
       isForeignKey: column.isForeignKey,

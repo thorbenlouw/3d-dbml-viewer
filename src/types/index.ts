@@ -73,6 +73,8 @@ export interface HoverContext {
     isNotNull: boolean;
     isUnique: boolean;
   };
+  referencedByFields?: string[];
+  referencedByTables?: string[];
 }
 
 export interface RelationshipLinkModel {
