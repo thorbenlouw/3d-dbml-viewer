@@ -8,6 +8,7 @@ import {
   forceZ,
   type SimulationNodeDatum,
   type SimulationLinkDatum,
+  type ManyBodyForce,
   type LinkForce,
 } from 'd3-force-3d';
 import type { ParsedSchema, SimulationNode } from '@/types';
@@ -20,6 +21,12 @@ const STICKY_NEIGHBOUR_PULL = 2.0;
 const STICKY_PLANE_PULL = 1.7;
 const STICKY_UNRELATED_MIN_DISTANCE = 4.6;
 const STICKY_UNRELATED_PUSH = 1.15;
+const BASE_CHARGE_STRENGTH = -15;
+
+function computeChargeStrength(scale: number): number {
+  // Much lower repulsion at small spacing values, stronger repulsion when spread out.
+  return BASE_CHARGE_STRENGTH * (0.1 + scale * 1.1);
+}
 
 interface D3Node extends SimulationNodeDatum {
   id: string;
@@ -176,6 +183,7 @@ export function useForceSimulation(
   const draggingIdRef = useRef<string | null>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
   const linkForceRef = useRef<LinkForce<D3Node, D3Link> | null>(null);
+  const chargeForceRef = useRef<ManyBodyForce<D3Node> | null>(null);
 
   const normalizedOptions: ForceSimulationOptions =
     typeof optionsOrOnSettled === 'function'
@@ -253,8 +261,12 @@ export function useForceSimulation(
       // no-op, force operates on refs each tick
     };
 
+    const chargeForce = forceManyBody<D3Node>().strength(() =>
+      computeChargeStrength(linkDistanceScaleRef.current),
+    );
+
     const sim = forceSimulation(liveNodes, 3)
-      .force('charge', forceManyBody().strength(-15))
+      .force('charge', chargeForce)
       .force('link', linkForce)
       .force('sticky-focus', stickyForce)
       .force('cx', forceX(0).strength(0.1))
@@ -264,6 +276,7 @@ export function useForceSimulation(
 
     simRef.current = sim;
     linkForceRef.current = linkForce;
+    chargeForceRef.current = chargeForce;
 
     let hasSettled = false;
     let rafId: number;
@@ -285,13 +298,15 @@ export function useForceSimulation(
       cancelAnimationFrame(rafId);
       simRef.current = null;
       linkForceRef.current = null;
+      chargeForceRef.current = null;
     };
   }, [schema, onSettled]);
 
   useEffect(() => {
     const linkForce = linkForceRef.current;
+    const chargeForce = chargeForceRef.current;
     const sim = simRef.current;
-    if (!linkForce || !sim) return;
+    if (!linkForce || !chargeForce || !sim) return;
 
     linkForce.distance((linkDatum: D3Link) => {
       const sourceId = getNodeId(linkDatum.source);
@@ -303,6 +318,7 @@ export function useForceSimulation(
         targetId,
       });
     });
+    chargeForce.strength(() => computeChargeStrength(linkDistanceScaleRef.current));
 
     sim.alpha(0.25);
   }, [stickyTableId, linkDistanceScale]);

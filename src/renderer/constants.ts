@@ -10,7 +10,7 @@ export const CONNECTION_SCALE_MAX = 2.4;
 export const CONNECTION_SCALE_DEFAULT = 0.4;
 export const CONNECTION_SCALE_UNITS_PER_SECOND = 0.9;
 export const ZOOM_SCALE_MIN = 0.1;
-export const ZOOM_SCALE_MAX = 4;
+export const ZOOM_SCALE_MAX = 100;
 export const ZOOM_SCALE_DEFAULT = 1;
 export const ZOOM_SCALE_UNITS_PER_SECOND = 1.2;
 

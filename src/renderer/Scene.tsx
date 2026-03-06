@@ -69,6 +69,7 @@ interface CameraControllerProps {
   stickyTableId: string | null;
   stickyNodePosition: THREE.Vector3 | null;
   zoomScale: number;
+  onZoomScaleFromControls: (nextZoomScale: number) => void;
 }
 
 interface CameraFrame {
@@ -190,15 +191,21 @@ function CameraController({
   stickyTableId,
   stickyNodePosition,
   zoomScale,
+  onZoomScaleFromControls,
 }: CameraControllerProps): null {
   const previousStickyPositionRef = useRef<THREE.Vector3 | null>(null);
   const previousStickyTableIdRef = useRef<string | null>(null);
   const previousZoomScaleRef = useRef(zoomScale);
+  const previousDistanceRef = useRef<number | null>(null);
 
   useFrame(() => {
     const controls = controlsRef.current;
     if (!controls) return;
     const camera = controls.object;
+    const currentDistance = camera.position.distanceTo(controls.target);
+    if (previousDistanceRef.current === null) {
+      previousDistanceRef.current = currentDistance;
+    }
 
     // Check for pending settle tween request
     if (shouldTweenToSettledRef.current && settledFrameRef.current) {
@@ -241,6 +248,7 @@ function CameraController({
         camera.position.copy(state.endPosition);
         controls.target.copy(state.endTarget);
         state.active = false;
+        previousDistanceRef.current = camera.position.distanceTo(controls.target);
       }
       return;
     }
@@ -277,9 +285,25 @@ function CameraController({
           controls.maxDistance,
         );
         camera.position.copy(controls.target).add(offset.normalize().multiplyScalar(nextDistance));
+        previousDistanceRef.current = nextDistance;
       }
       previousZoomScaleRef.current = zoomScale;
       controls.update();
+      return;
+    }
+
+    const distanceAfterUpdates = camera.position.distanceTo(controls.target);
+    const previousDistance = previousDistanceRef.current;
+    if (previousDistance && Math.abs(distanceAfterUpdates - previousDistance) > 1e-6) {
+      const ratio = distanceAfterUpdates / previousDistance;
+      const nextZoomScale = THREE.MathUtils.clamp(
+        previousZoomScaleRef.current * ratio,
+        ZOOM_SCALE_MIN,
+        ZOOM_SCALE_MAX,
+      );
+      previousZoomScaleRef.current = nextZoomScale;
+      previousDistanceRef.current = distanceAfterUpdates;
+      onZoomScaleFromControls(nextZoomScale);
     }
   });
 
@@ -531,6 +555,13 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     if (!hoverContext) return [];
     return getReferencedTablesForTable(schema, hoverContext.tableId);
   }, [hoverContext, schema]);
+  const zoomDisplayValue = useMemo(() => 1 / Math.max(zoomScale, 1e-6), [zoomScale]);
+  const handleZoomScaleFromControls = useCallback((nextZoomScale: number) => {
+    setZoomScale((current) => {
+      if (Math.abs(current - nextZoomScale) < 1e-6) return current;
+      return nextZoomScale;
+    });
+  }, []);
 
   useEffect(() => {
     if (connectionHoldDirection === 0) return;
@@ -713,6 +744,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           stickyTableId={effectiveStickyTableId}
           stickyNodePosition={stickyNodePosition}
           zoomScale={zoomScale}
+          onZoomScaleFromControls={handleZoomScaleFromControls}
         />
 
         {linkModels.map((link) => {
@@ -785,12 +817,12 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           }}
         >
           <div style={{ color: PANEL_TEXT_COLOR, fontSize: '0.75rem', fontWeight: 600 }}>
-            Connection
+            Spacing
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
             <AdjustButton
               text="-"
-              ariaLabel="Decrease connection length"
+              ariaLabel="Decrease spacing"
               onHoldStart={() => setConnectionHoldDirection(-1)}
               onHoldEnd={() => setConnectionHoldDirection(0)}
             />
@@ -806,7 +838,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             </div>
             <AdjustButton
               text="+"
-              ariaLabel="Increase connection length"
+              ariaLabel="Increase spacing"
               onHoldStart={() => setConnectionHoldDirection(1)}
               onHoldEnd={() => setConnectionHoldDirection(0)}
             />
@@ -826,7 +858,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             <AdjustButton
               text="-"
               ariaLabel="Decrease zoom length"
-              onHoldStart={() => setZoomHoldDirection(-1)}
+              onHoldStart={() => setZoomHoldDirection(1)}
               onHoldEnd={() => setZoomHoldDirection(0)}
             />
             <div
@@ -837,12 +869,12 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
                 textAlign: 'center',
               }}
             >
-              {zoomScale.toFixed(2)}x
+              {zoomDisplayValue.toFixed(2)}x
             </div>
             <AdjustButton
               text="+"
               ariaLabel="Increase zoom length"
-              onHoldStart={() => setZoomHoldDirection(1)}
+              onHoldStart={() => setZoomHoldDirection(-1)}
               onHoldEnd={() => setZoomHoldDirection(0)}
             />
           </div>
