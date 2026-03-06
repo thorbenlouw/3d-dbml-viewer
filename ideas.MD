@@ -1,4 +1,4 @@
-1. Clicking on a table title should move the table to the center of the view and zoom in on it. This allows users to quickly focus on a specific table and its relationships without having to manually navigate through the diagram.
+1. [X] Clicking on a table title should move the table to the center of the view and zoom in on it. This allows users to quickly focus on a specific table and its relationships without having to manually navigate through the diagram.
 2. Icons for NN, FK, PK, 
 3. "Referenced by" as well as "Referenced tables"
 4. Incoming references on left, Outgoing on right
@@ -22,8 +22,8 @@
 22. Support TableGroup Notes.
 23. Support Sticky notes (as floating notes in the space)
 24. `records` and table samples -- allow rendering from button in button, pops up as dismissable floating 3D dialog in front of user. 
-25. Add a button "connection +/-" (press and hold to adjust) that allows  modifying the length of connections setting from the default (pack tables tighter or looser)
-26. Add a "Zoom +/-" button (press and hold to adjust) that allows the user to just zoom out into space from their current position, keeping the centre and direction as is. Allows users to get a view of the whole diagram without manual zoom /fly.
-27. Make table titles get relatively bigger the further away they are, so what a table is stays legible even for distant tables (col font size stays proportionally small though)
-28. When a table is brought into focus, the other tables rearrange themselves so that directly linked tables travel to be "nearby" (preferably in the same plane), and unrelated tables move further away. This allows users to focus on the relevant part of the diagram while still having a sense of the overall structure.
-29. Double-click again on "sticky" table to stop it being the centre of the view. A table that is currently the sticky one, should have a glowing visual indicator around the table border.
+25.[X] Add a button "connection +/-" (press and hold to adjust) that allows  modifying the length of connections setting from the default (pack tables tighter or looser)
+26. [X] Add a "Zoom +/-" button (press and hold to adjust) that allows the user to just zoom out into space from their current position, keeping the centre and direction as is. Allows users to get a view of the whole diagram without manual zoom /fly.
+27. [X] Make table titles get relatively bigger the further away they are, so what a table is stays legible even for distant tables (col font size stays proportionally small though)
+28. [X] When a table is brought into focus, the other tables rearrange themselves so that directly linked tables travel to be "nearby" (preferably in the same plane), and unrelated tables move further away. This allows users to focus on the relevant part of the diagram while still having a sense of the overall structure.
+29. [X] Double-click again on "sticky" table to stop it being the centre of the view. A table that is currently the sticky one, should have a glowing visual indicator around the table border.
