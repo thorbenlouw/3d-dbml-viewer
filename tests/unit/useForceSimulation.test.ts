@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useForceSimulation } from '@/layout/useForceSimulation';
+import {
+  clampLinkDistanceScale,
+  computeEffectiveLinkDistance,
+  useForceSimulation,
+} from '@/layout/useForceSimulation';
 import type { ParsedSchema } from '@/types';
 
 // Mock requestAnimationFrame so we can control when rAF callbacks fire
@@ -227,5 +231,53 @@ describe('useForceSimulation', () => {
     expect(after.x).toBeCloseTo(before.x);
     expect(after.y).toBeCloseTo(before.y);
     expect(after.z).toBeCloseTo(before.z);
+  });
+
+  it('computeEffectiveLinkDistance clamps incoming scale', () => {
+    const value = computeEffectiveLinkDistance({
+      scale: 99,
+      stickyTableId: null,
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    expect(value).toBeCloseTo(1.5 * 2.4);
+  });
+
+  it('computeEffectiveLinkDistance shortens links connected to sticky table', () => {
+    const base = computeEffectiveLinkDistance({
+      scale: 1,
+      stickyTableId: null,
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    const sticky = computeEffectiveLinkDistance({
+      scale: 1,
+      stickyTableId: 'a',
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    expect(sticky).toBeLessThan(base);
+  });
+
+  it('computeEffectiveLinkDistance loosens non-sticky links while sticky is active', () => {
+    const base = computeEffectiveLinkDistance({
+      scale: 1,
+      stickyTableId: null,
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    const nonSticky = computeEffectiveLinkDistance({
+      scale: 1,
+      stickyTableId: 'x',
+      sourceId: 'a',
+      targetId: 'b',
+    });
+    expect(nonSticky).toBeGreaterThan(base);
+  });
+
+  it('clampLinkDistanceScale uses expected lower and upper bounds', () => {
+    expect(clampLinkDistanceScale(0.01)).toBe(0.1);
+    expect(clampLinkDistanceScale(1.25)).toBe(1.25);
+    expect(clampLinkDistanceScale(2.8)).toBe(2.4);
   });
 });

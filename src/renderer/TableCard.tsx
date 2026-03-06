@@ -34,6 +34,8 @@ import {
   TEXT_COLOR,
   TEXT_HEADER_SIZE,
   TEXT_ROW_SIZE,
+  STICKY_BORDER_COLOR,
+  STICKY_BORDER_GLOW_OPACITY,
   TITLE_SCALE_MAX,
 } from './constants';
 import { estimateTableCardDimensions } from './tableCardMetrics';
@@ -49,11 +51,12 @@ interface DragHandlers {
 
 interface TableCardProps {
   node: TableCardNode;
+  isSticky?: boolean;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
   dragHandlers?: DragHandlers;
-  onFlyTo?: (tableId: string) => void;
+  onHeaderDoubleClick?: (tableId: string) => void;
 }
 
 interface FieldBadge {
@@ -99,16 +102,18 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
 
 export default function TableCard({
   node,
+  isSticky = false,
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
   dragHandlers,
-  onFlyTo,
+  onHeaderDoubleClick,
 }: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const dragHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const tableHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const rowHitMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
@@ -131,6 +136,7 @@ export default function TableCard({
 
   useEffect(() => {
     if (dragHitMaterialRef.current) dragHitMaterialRef.current.depthWrite = false;
+    if (tableHitMaterialRef.current) tableHitMaterialRef.current.depthWrite = false;
     if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
     for (const material of rowHitMaterialRefs.current) {
       if (material) material.depthWrite = false;
@@ -193,8 +199,17 @@ export default function TableCard({
       </mesh>
 
       <lineSegments geometry={edgesGeometry}>
-        <lineBasicMaterial color={CARD_EDGE_COLOR} />
+        <lineBasicMaterial color={isSticky ? STICKY_BORDER_COLOR : CARD_EDGE_COLOR} />
       </lineSegments>
+      {isSticky && (
+        <lineSegments geometry={edgesGeometry} scale={[1.035, 1.035, 1.035]}>
+          <lineBasicMaterial
+            color={STICKY_BORDER_COLOR}
+            transparent
+            opacity={STICKY_BORDER_GLOW_OPACITY}
+          />
+        </lineSegments>
+      )}
 
       {/* Full-card transparent hit mesh for drag events */}
       {dragHandlers && (
@@ -213,18 +228,31 @@ export default function TableCard({
 
       {!dragHandlers && (
         <mesh
+          position={[0, 0, dimensions.depth / 2 + 0.013]}
+          onPointerEnter={(event) => {
+            event.stopPropagation();
+            onTableHoverChange?.(toTableHoverContext(node));
+          }}
+          onPointerMove={(event) => {
+            event.stopPropagation();
+            onTableHoverChange?.(toTableHoverContext(node));
+          }}
+        >
+          <boxGeometry args={[dimensions.width * 1.8, dimensions.height * 1.8, 0.012]} />
+          <meshBasicMaterial ref={tableHitMaterialRef} transparent opacity={0} />
+        </mesh>
+      )}
+
+      {!dragHandlers && (
+        <mesh
           position={[0, headerY, dimensions.depth / 2 + 0.014]}
           onPointerEnter={(event) => {
             event.stopPropagation();
             onTableHoverChange?.(toTableHoverContext(node));
           }}
-          onPointerLeave={(event) => {
-            event.stopPropagation();
-            onTableHoverChange?.(null);
-          }}
           onDoubleClick={(event) => {
             event.stopPropagation();
-            onFlyTo?.(node.id);
+            onHeaderDoubleClick?.(node.id);
           }}
         >
           <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
@@ -285,7 +313,7 @@ export default function TableCard({
                 }}
                 onPointerLeave={(event) => {
                   event.stopPropagation();
-                  onColumnHoverChange?.(null);
+                  onColumnHoverChange?.(toTableHoverContext(node));
                 }}
               >
                 <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, 0.015]} />

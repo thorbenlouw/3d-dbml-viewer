@@ -8,8 +8,18 @@ import {
   forceZ,
   type SimulationNodeDatum,
   type SimulationLinkDatum,
+  type LinkForce,
 } from 'd3-force-3d';
 import type { ParsedSchema, SimulationNode } from '@/types';
+
+const BASE_LINK_DISTANCE = 1.5;
+const STICKY_LINK_DISTANCE_MULTIPLIER = 0.65;
+const NON_STICKY_LINK_DISTANCE_MULTIPLIER = 1.12;
+const STICKY_NEIGHBOUR_TARGET_RADIUS = 1.9;
+const STICKY_NEIGHBOUR_PULL = 2.0;
+const STICKY_PLANE_PULL = 1.7;
+const STICKY_UNRELATED_MIN_DISTANCE = 4.6;
+const STICKY_UNRELATED_PUSH = 1.15;
 
 interface D3Node extends SimulationNodeDatum {
   id: string;
@@ -26,6 +36,34 @@ interface D3Node extends SimulationNodeDatum {
 interface D3Link extends SimulationLinkDatum<D3Node> {
   source: string;
   target: string;
+}
+
+export interface ForceSimulationOptions {
+  onSettled?: (nodes: SimulationNode[]) => void;
+  stickyTableId?: string | null;
+  linkDistanceScale?: number;
+}
+
+export function clampLinkDistanceScale(scale: number): number {
+  return Math.min(2.4, Math.max(0.1, scale));
+}
+
+export function computeEffectiveLinkDistance(params: {
+  scale: number;
+  stickyTableId: string | null;
+  sourceId: string;
+  targetId: string;
+}): number {
+  const clampedScale = clampLinkDistanceScale(params.scale);
+  const base = BASE_LINK_DISTANCE * clampedScale;
+
+  if (!params.stickyTableId) return base;
+
+  if (params.sourceId === params.stickyTableId || params.targetId === params.stickyTableId) {
+    return base * STICKY_LINK_DISTANCE_MULTIPLIER;
+  }
+
+  return base * NON_STICKY_LINK_DISTANCE_MULTIPLIER;
 }
 
 function buildLiveNodes(tables: { id: string; name: string }[]): D3Node[] {
@@ -66,9 +104,67 @@ function toSimulationNode(n: D3Node): SimulationNode {
   };
 }
 
+function getNodeId(nodeOrId: string | number | D3Node): string {
+  if (typeof nodeOrId === 'string') return nodeOrId;
+  if (typeof nodeOrId === 'number') return String(nodeOrId);
+  return nodeOrId.id;
+}
+
+function applyStickyFocusForces(params: {
+  alpha: number;
+  nodes: D3Node[];
+  nodeMap: Map<string, D3Node>;
+  neighbourMap: Map<string, string[]>;
+  stickyTableId: string | null;
+}): void {
+  const { alpha, nodes, nodeMap, neighbourMap, stickyTableId } = params;
+  if (!stickyTableId) return;
+
+  const stickyNode = nodeMap.get(stickyTableId);
+  if (!stickyNode) return;
+
+  const neighbours = new Set(neighbourMap.get(stickyTableId) ?? []);
+
+  for (const node of nodes) {
+    if (node.id === stickyTableId || node.isPinned) continue;
+
+    const dx = node.x - stickyNode.x;
+    const dy = node.y - stickyNode.y;
+    const dz = node.z - stickyNode.z;
+
+    if (neighbours.has(node.id)) {
+      const planarDistance = Math.max(0.0001, Math.hypot(dx, dy));
+      const ux = dx / planarDistance;
+      const uy = dy / planarDistance;
+      const targetX = stickyNode.x + ux * STICKY_NEIGHBOUR_TARGET_RADIUS;
+      const targetY = stickyNode.y + uy * STICKY_NEIGHBOUR_TARGET_RADIUS;
+
+      node.vx = (node.vx ?? 0) + (targetX - node.x) * STICKY_NEIGHBOUR_PULL * alpha;
+      node.vy = (node.vy ?? 0) + (targetY - node.y) * STICKY_NEIGHBOUR_PULL * alpha;
+      node.vz = (node.vz ?? 0) + (stickyNode.z - node.z) * STICKY_PLANE_PULL * alpha;
+      continue;
+    }
+
+    const distance = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy + dz * dz));
+    if (distance >= STICKY_UNRELATED_MIN_DISTANCE) continue;
+
+    const push =
+      ((STICKY_UNRELATED_MIN_DISTANCE - distance) / STICKY_UNRELATED_MIN_DISTANCE) *
+      STICKY_UNRELATED_PUSH *
+      alpha;
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const uz = dz / distance;
+
+    node.vx = (node.vx ?? 0) + ux * push;
+    node.vy = (node.vy ?? 0) + uy * push;
+    node.vz = (node.vz ?? 0) + uz * push * 0.6;
+  }
+}
+
 export function useForceSimulation(
   schema: ParsedSchema,
-  onSettled?: (nodes: SimulationNode[]) => void,
+  optionsOrOnSettled?: ForceSimulationOptions | ((nodes: SimulationNode[]) => void),
 ): {
   nodes: SimulationNode[];
   setPin: (id: string, position: { x: number; y: number; z: number } | null) => void;
@@ -79,6 +175,25 @@ export function useForceSimulation(
   const neighbourMapRef = useRef<Map<string, string[]>>(new Map());
   const draggingIdRef = useRef<string | null>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
+  const linkForceRef = useRef<LinkForce<D3Node, D3Link> | null>(null);
+
+  const normalizedOptions: ForceSimulationOptions =
+    typeof optionsOrOnSettled === 'function'
+      ? { onSettled: optionsOrOnSettled }
+      : (optionsOrOnSettled ?? {});
+
+  const onSettled = normalizedOptions.onSettled;
+  const stickyTableId = normalizedOptions.stickyTableId ?? null;
+  const linkDistanceScale = normalizedOptions.linkDistanceScale ?? 1;
+
+  const stickyTableIdRef = useRef<string | null>(stickyTableId);
+  const linkDistanceScaleRef = useRef<number>(clampLinkDistanceScale(linkDistanceScale));
+
+  useEffect(() => {
+    stickyTableIdRef.current = stickyTableId;
+    linkDistanceScaleRef.current = clampLinkDistanceScale(linkDistanceScale);
+  }, [stickyTableId, linkDistanceScale]);
+
   // Initialise with seeded positions so the first render has data immediately
   const [nodes, setNodes] = useState<SimulationNode[]>(() =>
     buildLiveNodes(schema.tables).map(toSimulationNode),
@@ -110,20 +225,45 @@ export function useForceSimulation(
       target: ref.targetId,
     }));
 
+    const resolveDistance = (linkDatum: D3Link): number => {
+      const sourceId = getNodeId(linkDatum.source);
+      const targetId = getNodeId(linkDatum.target);
+      return computeEffectiveLinkDistance({
+        scale: linkDistanceScaleRef.current,
+        stickyTableId: stickyTableIdRef.current,
+        sourceId,
+        targetId,
+      });
+    };
+
+    const linkForce = forceLink<D3Node, D3Link>(links)
+      .id((d) => d.id)
+      .distance(resolveDistance);
+
+    const stickyForce = (alpha: number): void => {
+      applyStickyFocusForces({
+        alpha,
+        nodes: liveNodesRef.current,
+        nodeMap: nodeMapRef.current,
+        neighbourMap: neighbourMapRef.current,
+        stickyTableId: stickyTableIdRef.current,
+      });
+    };
+    stickyForce.initialize = () => {
+      // no-op, force operates on refs each tick
+    };
+
     const sim = forceSimulation(liveNodes, 3)
       .force('charge', forceManyBody().strength(-15))
-      .force(
-        'link',
-        forceLink<D3Node, D3Link>(links)
-          .id((d) => d.id)
-          .distance(1.5),
-      )
+      .force('link', linkForce)
+      .force('sticky-focus', stickyForce)
       .force('cx', forceX(0).strength(0.1))
       .force('cy', forceY(0).strength(0.1))
       .force('cz', forceZ(0).strength(0.1))
       .stop(); // Stop d3's internal timer; we drive ticks via rAF
 
     simRef.current = sim;
+    linkForceRef.current = linkForce;
 
     let hasSettled = false;
     let rafId: number;
@@ -144,8 +284,28 @@ export function useForceSimulation(
     return () => {
       cancelAnimationFrame(rafId);
       simRef.current = null;
+      linkForceRef.current = null;
     };
   }, [schema, onSettled]);
+
+  useEffect(() => {
+    const linkForce = linkForceRef.current;
+    const sim = simRef.current;
+    if (!linkForce || !sim) return;
+
+    linkForce.distance((linkDatum: D3Link) => {
+      const sourceId = getNodeId(linkDatum.source);
+      const targetId = getNodeId(linkDatum.target);
+      return computeEffectiveLinkDistance({
+        scale: linkDistanceScaleRef.current,
+        stickyTableId: stickyTableIdRef.current,
+        sourceId,
+        targetId,
+      });
+    });
+
+    sim.alpha(0.25);
+  }, [stickyTableId, linkDistanceScale]);
 
   const setPin = useCallback(
     (id: string, position: { x: number; y: number; z: number } | null) => {

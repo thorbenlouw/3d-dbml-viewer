@@ -19,10 +19,22 @@ import type {
   TableCardNode,
 } from '@/types';
 import {
+  CONNECTION_SCALE_DEFAULT,
+  CONNECTION_SCALE_MAX,
+  CONNECTION_SCALE_MIN,
+  CONNECTION_SCALE_UNITS_PER_SECOND,
   FLY_TO_DISTANCE,
+  HOLD_CONTROL_INTERVAL_MS,
   PANEL_ACCENT_COLOR,
+  PANEL_BG_COLOR,
+  PANEL_BORDER_COLOR,
+  PANEL_TEXT_COLOR,
   RESET_TWEEN_DURATION_MS,
   SCENE_BG_COLOR,
+  ZOOM_SCALE_DEFAULT,
+  ZOOM_SCALE_MAX,
+  ZOOM_SCALE_MIN,
+  ZOOM_SCALE_UNITS_PER_SECOND,
 } from './constants';
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
@@ -54,6 +66,9 @@ interface CameraControllerProps {
   pendingTweenRef: RefObject<CameraFrame | null>;
   settledFrameRef: RefObject<CameraFrame | null>;
   shouldTweenToSettledRef: RefObject<boolean>;
+  stickyTableId: string | null;
+  stickyNodePosition: THREE.Vector3 | null;
+  zoomScale: number;
 }
 
 interface CameraFrame {
@@ -63,6 +78,7 @@ interface CameraFrame {
 
 interface DraggableTableCardProps {
   node: TableCardNode;
+  isSticky: boolean;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
@@ -70,7 +86,14 @@ interface DraggableTableCardProps {
   onDragStart: (id: string, pos: THREE.Vector3) => void;
   onDragMove: (id: string, delta: THREE.Vector3) => void;
   onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
-  onFlyTo?: (tableId: string) => void;
+  onHeaderDoubleClick?: (tableId: string) => void;
+}
+
+interface AdjustButtonProps {
+  text: string;
+  ariaLabel: string;
+  onHoldStart: () => void;
+  onHoldEnd: () => void;
 }
 
 const DEFAULT_CAMERA_POSITION = new THREE.Vector3(6, 4, 12);
@@ -119,23 +142,70 @@ function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
   return models;
 }
 
+function AdjustButton({
+  text,
+  ariaLabel,
+  onHoldStart,
+  onHoldEnd,
+}: AdjustButtonProps): ReactElement {
+  return (
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        onHoldStart();
+      }}
+      onPointerUp={onHoldEnd}
+      onPointerLeave={onHoldEnd}
+      onPointerCancel={onHoldEnd}
+      style={{
+        backgroundColor: '#1e293b',
+        border: `1px solid ${PANEL_BORDER_COLOR}`,
+        color: PANEL_TEXT_COLOR,
+        borderRadius: '0.375rem',
+        padding: 0,
+        cursor: 'pointer',
+        fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+        fontSize: '0.95rem',
+        fontWeight: 600,
+        lineHeight: 1,
+        width: '2rem',
+        height: '1.8rem',
+        display: 'grid',
+        placeItems: 'center',
+      }}
+      aria-label={ariaLabel}
+    >
+      {text}
+    </button>
+  );
+}
+
 function CameraController({
   tweenStateRef,
   controlsRef,
   pendingTweenRef,
   settledFrameRef,
   shouldTweenToSettledRef,
+  stickyTableId,
+  stickyNodePosition,
+  zoomScale,
 }: CameraControllerProps): null {
+  const previousStickyPositionRef = useRef<THREE.Vector3 | null>(null);
+  const previousStickyTableIdRef = useRef<string | null>(null);
+  const previousZoomScaleRef = useRef(zoomScale);
+
   useFrame(() => {
     const controls = controlsRef.current;
     if (!controls) return;
+    const camera = controls.object;
 
     // Check for pending settle tween request
     if (shouldTweenToSettledRef.current && settledFrameRef.current) {
       shouldTweenToSettledRef.current = false;
       tweenStateRef.current = {
         active: true,
-        startPosition: controls.object.position.clone(),
+        startPosition: camera.position.clone(),
         endPosition: settledFrameRef.current.position,
         startTarget: controls.target.clone(),
         endTarget: settledFrameRef.current.target,
@@ -149,7 +219,7 @@ function CameraController({
       pendingTweenRef.current = null;
       tweenStateRef.current = {
         active: true,
-        startPosition: controls.object.position.clone(),
+        startPosition: camera.position.clone(),
         endPosition: frame.position,
         startTarget: controls.target.clone(),
         endTarget: frame.target,
@@ -158,21 +228,58 @@ function CameraController({
     }
 
     const state = tweenStateRef.current;
-    if (!state || !state.active) return;
+    if (state && state.active) {
+      const elapsed = Date.now() - state.startTime;
+      const progress = Math.min(elapsed / RESET_TWEEN_DURATION_MS, 1);
+      const eased = easeInOutCubic(progress);
 
-    const camera = controls.object;
-    const elapsed = Date.now() - state.startTime;
-    const progress = Math.min(elapsed / RESET_TWEEN_DURATION_MS, 1);
-    const eased = easeInOutCubic(progress);
+      camera.position.lerpVectors(state.startPosition, state.endPosition, eased);
+      controls.target.lerpVectors(state.startTarget, state.endTarget, eased);
+      controls.update();
 
-    camera.position.lerpVectors(state.startPosition, state.endPosition, eased);
-    controls.target.lerpVectors(state.startTarget, state.endTarget, eased);
-    controls.update();
+      if (progress >= 1) {
+        camera.position.copy(state.endPosition);
+        controls.target.copy(state.endTarget);
+        state.active = false;
+      }
+      return;
+    }
 
-    if (progress >= 1) {
-      camera.position.copy(state.endPosition);
-      controls.target.copy(state.endTarget);
-      state.active = false;
+    if (stickyTableId && stickyNodePosition) {
+      if (previousStickyTableIdRef.current !== stickyTableId) {
+        const stickyDelta = stickyNodePosition.clone().sub(controls.target);
+        controls.target.add(stickyDelta);
+        camera.position.add(stickyDelta);
+        previousStickyTableIdRef.current = stickyTableId;
+        previousStickyPositionRef.current = stickyNodePosition.clone();
+      } else if (previousStickyPositionRef.current) {
+        const delta = stickyNodePosition.clone().sub(previousStickyPositionRef.current);
+        if (delta.lengthSq() > 1e-8) {
+          controls.target.add(delta);
+          camera.position.add(delta);
+        }
+        previousStickyPositionRef.current.copy(stickyNodePosition);
+      }
+      controls.update();
+    } else {
+      previousStickyTableIdRef.current = null;
+      previousStickyPositionRef.current = null;
+    }
+
+    if (Math.abs(previousZoomScaleRef.current - zoomScale) > 1e-8) {
+      const offset = camera.position.clone().sub(controls.target);
+      const currentDistance = offset.length();
+      if (currentDistance > 0.0001) {
+        const ratio = zoomScale / Math.max(previousZoomScaleRef.current, 1e-6);
+        const nextDistance = THREE.MathUtils.clamp(
+          currentDistance * ratio,
+          controls.minDistance,
+          controls.maxDistance,
+        );
+        camera.position.copy(controls.target).add(offset.normalize().multiplyScalar(nextDistance));
+      }
+      previousZoomScaleRef.current = zoomScale;
+      controls.update();
     }
   });
 
@@ -232,6 +339,7 @@ function CameraInitialiser({ cameraRef }: { cameraRef: RefObject<THREE.Camera | 
 
 function DraggableTableCard({
   node,
+  isSticky,
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
@@ -239,7 +347,7 @@ function DraggableTableCard({
   onDragStart,
   onDragMove,
   onDragEnd,
-  onFlyTo,
+  onHeaderDoubleClick,
 }: DraggableTableCardProps): ReactElement {
   const { camera, gl } = useThree();
   const worldPosition = useMemo(
@@ -264,7 +372,8 @@ function DraggableTableCard({
       onTableHoverChange={onTableHoverChange}
       onColumnHoverChange={onColumnHoverChange}
       dragHandlers={isRearrangeMode ? dragHandlers : undefined}
-      onFlyTo={!isRearrangeMode ? onFlyTo : undefined}
+      onHeaderDoubleClick={!isRearrangeMode ? onHeaderDoubleClick : undefined}
+      isSticky={isSticky}
     />
   );
 }
@@ -277,6 +386,15 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
 
   const [isRearrangeMode, setIsRearrangeMode] = useState(false);
   const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
+  const [stickyTableId, setStickyTableId] = useState<string | null>(null);
+  const [linkDistanceScale, setLinkDistanceScale] = useState(CONNECTION_SCALE_DEFAULT);
+  const [connectionHoldDirection, setConnectionHoldDirection] = useState(0);
+  const [zoomScale, setZoomScale] = useState(ZOOM_SCALE_DEFAULT);
+  const [zoomHoldDirection, setZoomHoldDirection] = useState(0);
+  const stickyTableIdForSchema = useMemo(() => {
+    if (!stickyTableId) return null;
+    return schema.tables.some((table) => table.id === stickyTableId) ? stickyTableId : null;
+  }, [stickyTableId, schema.tables]);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
   const cameraRef = useRef<THREE.Camera | null>(null);
@@ -284,6 +402,11 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const hasFittedOnceRef = useRef<boolean>(false);
   const shouldTweenToSettledRef = useRef<boolean>(false);
   const pendingTweenRef = useRef<CameraFrame | null>(null);
+  const stickyTableIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    stickyTableIdRef.current = stickyTableIdForSchema;
+  }, [stickyTableIdForSchema]);
 
   const handleSettled = useCallback(
     (settledNodes: SimulationNode[]) => {
@@ -332,11 +455,28 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     [schema.tables],
   );
 
-  const { nodes: simNodes, setPin, nudge } = useForceSimulation(schema, handleSettled);
+  const {
+    nodes: simNodes,
+    setPin,
+    nudge,
+  } = useForceSimulation(schema, {
+    onSettled: handleSettled,
+    stickyTableId: stickyTableIdForSchema,
+    linkDistanceScale,
+  });
 
   const cardNodes = useMemo(() => buildCardNodes(simNodes, schema), [simNodes, schema]);
   const linkModels = useMemo(() => buildLinkModels(schema), [schema]);
   const cardById = useMemo(() => new Map(cardNodes.map((node) => [node.id, node])), [cardNodes]);
+  const effectiveStickyTableId = useMemo(() => {
+    if (!stickyTableIdForSchema || !cardById.has(stickyTableIdForSchema)) return null;
+    return stickyTableIdForSchema;
+  }, [stickyTableIdForSchema, cardById]);
+  const stickyNodePosition = useMemo(() => {
+    if (!effectiveStickyTableId) return null;
+    const stickyNode = cardById.get(effectiveStickyTableId);
+    return stickyNode ? new THREE.Vector3(stickyNode.x, stickyNode.y, stickyNode.z) : null;
+  }, [effectiveStickyTableId, cardById]);
 
   const framePoints = useMemo(() => {
     const points: THREE.Vector3[] = [];
@@ -392,10 +532,61 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     return getReferencedTablesForTable(schema, hoverContext.tableId);
   }, [hoverContext, schema]);
 
+  useEffect(() => {
+    if (connectionHoldDirection === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      setLinkDistanceScale((current) =>
+        THREE.MathUtils.clamp(
+          current +
+            connectionHoldDirection *
+              (CONNECTION_SCALE_UNITS_PER_SECOND * (HOLD_CONTROL_INTERVAL_MS / 1000)),
+          CONNECTION_SCALE_MIN,
+          CONNECTION_SCALE_MAX,
+        ),
+      );
+    }, HOLD_CONTROL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [connectionHoldDirection]);
+
+  useEffect(() => {
+    if (zoomHoldDirection === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      setZoomScale((current) =>
+        THREE.MathUtils.clamp(
+          current +
+            zoomHoldDirection * (ZOOM_SCALE_UNITS_PER_SECOND * (HOLD_CONTROL_INTERVAL_MS / 1000)),
+          ZOOM_SCALE_MIN,
+          ZOOM_SCALE_MAX,
+        ),
+      );
+    }, HOLD_CONTROL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [zoomHoldDirection]);
+
   const handleResetView = useCallback((): void => {
+    if (stickyNodePosition) {
+      const controls = controlsRef.current;
+      if (controls) {
+        const offset = controls.object.position.clone().sub(controls.target);
+        pendingTweenRef.current = {
+          target: stickyNodePosition.clone(),
+          position: stickyNodePosition.clone().add(offset),
+        };
+        return;
+      }
+    }
+
     const resetFrame = settledFrameRef.current ?? computeCameraFrameFromPoints(framePoints, 60);
     pendingTweenRef.current = resetFrame;
-  }, [framePoints]);
+  }, [framePoints, stickyNodePosition]);
 
   const handleFlyTo = useCallback(
     (tableId: string): void => {
@@ -413,6 +604,20 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       pendingTweenRef.current = { position: endPosition, target: endTarget };
     },
     [cardById],
+  );
+
+  const handleHeaderDoubleClick = useCallback(
+    (tableId: string): void => {
+      const currentStickyTableId = stickyTableIdRef.current;
+      if (currentStickyTableId === tableId) {
+        setStickyTableId(null);
+        return;
+      }
+
+      setStickyTableId(tableId);
+      handleFlyTo(tableId);
+    },
+    [handleFlyTo],
   );
 
   const handleDragStart = useCallback(
@@ -505,6 +710,9 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           pendingTweenRef={pendingTweenRef}
           settledFrameRef={settledFrameRef}
           shouldTweenToSettledRef={shouldTweenToSettledRef}
+          stickyTableId={effectiveStickyTableId}
+          stickyNodePosition={stickyNodePosition}
+          zoomScale={zoomScale}
         />
 
         {linkModels.map((link) => {
@@ -535,6 +743,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             <DraggableTableCard
               key={node.id}
               node={node}
+              isSticky={node.id === effectiveStickyTableId}
               highlightedColumn={highlightedColumn}
               onTableHoverChange={setHoverContext}
               onColumnHoverChange={setHoverContext}
@@ -542,7 +751,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
-              onFlyTo={handleFlyTo}
+              onHeaderDoubleClick={handleHeaderDoubleClick}
             />
           );
         })}
@@ -552,6 +761,93 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
 
       <LoadFileButton onLoad={onLoadFile} />
       <ResetViewButton onClick={handleResetView} />
+      <div
+        style={{
+          position: 'fixed',
+          right: '1rem',
+          bottom: '4.2rem',
+          display: 'grid',
+          gap: '0.5rem',
+          zIndex: 40,
+          background: PANEL_BG_COLOR,
+          border: `1px solid ${PANEL_BORDER_COLOR}`,
+          borderRadius: '0.5rem',
+          padding: '0.5rem',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gap: '0.25rem',
+            border: `1px solid ${PANEL_BORDER_COLOR}`,
+            borderRadius: '0.4rem',
+            padding: '0.35rem',
+          }}
+        >
+          <div style={{ color: PANEL_TEXT_COLOR, fontSize: '0.75rem', fontWeight: 600 }}>
+            Connection
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <AdjustButton
+              text="-"
+              ariaLabel="Decrease connection length"
+              onHoldStart={() => setConnectionHoldDirection(-1)}
+              onHoldEnd={() => setConnectionHoldDirection(0)}
+            />
+            <div
+              style={{
+                color: PANEL_TEXT_COLOR,
+                fontSize: '0.8rem',
+                minWidth: '3.7rem',
+                textAlign: 'center',
+              }}
+            >
+              {linkDistanceScale.toFixed(2)}x
+            </div>
+            <AdjustButton
+              text="+"
+              ariaLabel="Increase connection length"
+              onHoldStart={() => setConnectionHoldDirection(1)}
+              onHoldEnd={() => setConnectionHoldDirection(0)}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gap: '0.25rem',
+            border: `1px solid ${PANEL_BORDER_COLOR}`,
+            borderRadius: '0.4rem',
+            padding: '0.35rem',
+          }}
+        >
+          <div style={{ color: PANEL_TEXT_COLOR, fontSize: '0.75rem', fontWeight: 600 }}>Zoom</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <AdjustButton
+              text="-"
+              ariaLabel="Decrease zoom length"
+              onHoldStart={() => setZoomHoldDirection(-1)}
+              onHoldEnd={() => setZoomHoldDirection(0)}
+            />
+            <div
+              style={{
+                color: PANEL_TEXT_COLOR,
+                fontSize: '0.8rem',
+                minWidth: '3.7rem',
+                textAlign: 'center',
+              }}
+            >
+              {zoomScale.toFixed(2)}x
+            </div>
+            <AdjustButton
+              text="+"
+              ariaLabel="Increase zoom length"
+              onHoldStart={() => setZoomHoldDirection(1)}
+              onHoldEnd={() => setZoomHoldDirection(0)}
+            />
+          </div>
+        </div>
+      </div>
       <button
         type="button"
         onClick={() =>

@@ -4,6 +4,15 @@ export const DISTANCE_NEAR = 4;
 export const DISTANCE_FAR = 18;
 
 export const RESET_TWEEN_DURATION_MS = 600;
+export const HOLD_CONTROL_INTERVAL_MS = 16;
+export const CONNECTION_SCALE_MIN = 0.1;
+export const CONNECTION_SCALE_MAX = 2.4;
+export const CONNECTION_SCALE_DEFAULT = 0.4;
+export const CONNECTION_SCALE_UNITS_PER_SECOND = 0.9;
+export const ZOOM_SCALE_MIN = 0.1;
+export const ZOOM_SCALE_MAX = 4;
+export const ZOOM_SCALE_DEFAULT = 1;
+export const ZOOM_SCALE_UNITS_PER_SECOND = 1.2;
 
 export const CARD_DEPTH = 0.14;
 export const CARD_HEADER_HEIGHT = 0.28;
@@ -53,6 +62,12 @@ export const SCENE_FONT_BOLD = '/fonts/Inter-Bold.ttf';
 
 export const TITLE_SCALE_MAX = 2.5;
 export const FLY_TO_DISTANCE = 5;
+export const BASE_LINK_DISTANCE = 1.5;
+export const STICKY_LINK_DISTANCE_MULTIPLIER = 0.65;
+export const NON_STICKY_LINK_DISTANCE_MULTIPLIER = 1.12;
+
+export const STICKY_BORDER_COLOR = '#facc15';
+export const STICKY_BORDER_GLOW_OPACITY = 0.75;
 
 export const NOTE_ICON_CHAR = '✎';
 export const NOTE_ICON_SIZE = 0.065;
