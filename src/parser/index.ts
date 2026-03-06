@@ -38,6 +38,7 @@ interface DbmlSchema {
 
 interface DbmlDatabase {
   schemas: DbmlSchema[];
+  name?: string;
 }
 
 export class ParseError extends Error {
@@ -98,6 +99,8 @@ function mapRefs(schemas: DbmlSchema[]): ParsedRef[] {
         targetId: target.tableName,
         sourceFieldNames: [...source.fieldNames],
         targetFieldNames: [...target.fieldNames],
+        sourceRelation: source.relation,
+        targetRelation: target.relation,
       };
     }),
   );
@@ -137,5 +140,9 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
 
   const refs = mapRefs(database.schemas);
 
-  return { tables, refs };
+  const rawProjectName = database.name?.trim();
+  const projectName =
+    rawProjectName !== undefined && rawProjectName.length > 0 ? rawProjectName : undefined;
+
+  return { tables, refs, projectName };
 }

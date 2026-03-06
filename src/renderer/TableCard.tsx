@@ -22,9 +22,8 @@ import {
   COLUMN_HIGHLIGHT_COLOR,
   DISTANCE_FAR,
   DISTANCE_NEAR,
+  NOTE_BADGE_TEXT_COLOR,
   NOTE_ICON_CHAR,
-  NOTE_ICON_SIZE,
-  NOTE_HIGHLIGHT_COLOR,
   OPACITY_FAR,
   OPACITY_NEAR,
   SCENE_FONT_BOLD,
@@ -87,6 +86,12 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
     tableGroup: node.table.tableGroup,
     columnName: column.name,
     note: column.note ?? node.table.note,
+    columnAttributes: {
+      isPrimaryKey: column.isPrimaryKey,
+      isForeignKey: column.isForeignKey,
+      isNotNull: column.isNotNull,
+      isUnique: column.isUnique,
+    },
   };
 }
 
@@ -207,6 +212,10 @@ export default function TableCard({
           event.stopPropagation();
           onTableHoverChange?.(toTableHoverContext(node));
         }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onHeaderDoubleClick?.(node.id);
+        }}
       >
         <boxGeometry args={[dimensions.width * 1.8, dimensions.height * 1.8, 0.012]} />
         <meshBasicMaterial ref={tableHitMaterialRef} transparent opacity={0} />
@@ -218,22 +227,21 @@ export default function TableCard({
           event.stopPropagation();
           onTableHoverChange?.(toTableHoverContext(node));
         }}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          onHeaderDoubleClick?.(node.id);
-        }}
       >
         <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
         <meshBasicMaterial ref={headerHitMaterialRef} transparent opacity={0} />
       </mesh>
 
-      <group ref={titleScaleGroupRef} position={[0, headerY, dimensions.depth / 2 + 0.012]}>
+      <group
+        ref={titleScaleGroupRef}
+        position={[0, dimensions.height / 2 + 0.18, dimensions.depth / 2 + 0.01]}
+      >
         <Text
           font={SCENE_FONT_REGULAR}
-          color={highlightedColumn === '__table__' ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
-          fontSize={TEXT_HEADER_SIZE}
+          color={highlightedColumn === '__table__' ? COLUMN_HIGHLIGHT_COLOR : TEXT_COLOR}
+          fontSize={TEXT_HEADER_SIZE * 2}
           anchorX="center"
-          anchorY="middle"
+          anchorY="bottom"
           maxWidth={dimensions.width - CARD_HORIZONTAL_PADDING * 2}
         >
           {truncate(node.table.name, 32)}
@@ -241,20 +249,28 @@ export default function TableCard({
       </group>
 
       {node.table.note && (
-        <Text
-          font={SCENE_FONT_REGULAR}
-          color={NOTE_HIGHLIGHT_COLOR}
-          fontSize={NOTE_ICON_SIZE}
-          anchorX="center"
-          anchorY="middle"
+        <group
           position={[
-            dimensions.width / 2 - CARD_HORIZONTAL_PADDING,
-            headerY + CARD_HEADER_HEIGHT * 0.28,
-            dimensions.depth / 2 + 0.02,
+            -dimensions.width / 2 + CARD_HORIZONTAL_PADDING + BADGE_WIDTH / 2,
+            headerY,
+            dimensions.depth / 2 + 0.012,
           ]}
         >
-          {NOTE_ICON_CHAR}
-        </Text>
+          <mesh>
+            <boxGeometry args={[BADGE_WIDTH, BADGE_HEIGHT, 0.01]} />
+            <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
+          </mesh>
+          <Text
+            font={SCENE_FONT_BOLD}
+            color={NOTE_BADGE_TEXT_COLOR}
+            fontSize={TEXT_BADGE_SIZE}
+            anchorX="center"
+            anchorY="middle"
+            position={[0, 0, 0.006]}
+          >
+            {NOTE_ICON_CHAR}
+          </Text>
+        </group>
       )}
 
       {node.table.columns.map((column, index) => {
@@ -360,21 +376,31 @@ export default function TableCard({
             })}
 
             {column.note && (
-              <Text
-                font={SCENE_FONT_REGULAR}
-                color={NOTE_HIGHLIGHT_COLOR}
-                fontSize={NOTE_ICON_SIZE}
-                anchorX="center"
-                anchorY="middle"
+              <group
                 position={[
                   badgeGroupRightX -
-                    (badges.length > 0 ? badges.length * (BADGE_WIDTH + BADGE_GAP) + 0.1 : 0),
+                    badges.length * (BADGE_WIDTH + BADGE_GAP) -
+                    BADGE_WIDTH / 2 -
+                    (badges.length > 0 ? BADGE_GAP : 0),
                   rowY,
-                  dimensions.depth / 2 + 0.02,
+                  dimensions.depth / 2 + 0.012,
                 ]}
               >
-                {NOTE_ICON_CHAR}
-              </Text>
+                <mesh>
+                  <boxGeometry args={[BADGE_WIDTH, BADGE_HEIGHT, 0.01]} />
+                  <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
+                </mesh>
+                <Text
+                  font={SCENE_FONT_BOLD}
+                  color={NOTE_BADGE_TEXT_COLOR}
+                  fontSize={TEXT_BADGE_SIZE}
+                  anchorX="center"
+                  anchorY="middle"
+                  position={[0, 0, 0.006]}
+                >
+                  {NOTE_ICON_CHAR}
+                </Text>
+              </group>
             )}
           </group>
         );

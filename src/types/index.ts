@@ -22,11 +22,19 @@ export interface ParsedRef {
   targetId: string;
   sourceFieldNames: string[];
   targetFieldNames: string[];
+  sourceRelation?: string;
+  targetRelation?: string;
+}
+
+export interface ReferenceItem {
+  label: string;
+  cardinality?: string;
 }
 
 export interface ParsedSchema {
   tables: ParsedTable[];
   refs: ParsedRef[];
+  projectName?: string;
 }
 
 export interface LayoutNode {
@@ -59,6 +67,12 @@ export interface HoverContext {
   tableGroup?: string;
   columnName?: string;
   note?: string;
+  columnAttributes?: {
+    isPrimaryKey: boolean;
+    isForeignKey: boolean;
+    isNotNull: boolean;
+    isUnique: boolean;
+  };
 }
 
 export interface RelationshipLinkModel {

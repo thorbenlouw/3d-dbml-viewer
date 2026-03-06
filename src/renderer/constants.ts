@@ -23,7 +23,7 @@ export const CARD_MIN_WIDTH = 2.2;
 export const CARD_MAX_WIDTH = 4.3;
 export const CARD_COLUMN_GAP = 0.12;
 
-export const TEXT_HEADER_SIZE = 0.14;
+export const TEXT_HEADER_SIZE = 0.12;
 export const TEXT_ROW_SIZE = 0.1;
 export const TEXT_BADGE_SIZE = 0.065;
 
@@ -44,8 +44,9 @@ export const CARD_EDGE_COLOR = '#7BC8FF';
 export const CARD_ROW_ODD_COLOR = '#1A3A58';
 export const CARD_ROW_EVEN_COLOR = '#1E4365';
 export const TEXT_COLOR = '#F3FAFF';
-export const BADGE_BG_COLOR = '#2F9FE3';
+export const BADGE_BG_COLOR = '#2C3A4A';
 export const BADGE_TEXT_COLOR = '#F8FDFF';
+export const NOTE_BADGE_TEXT_COLOR = '#F8FDFF';
 export const LINK_COLOR = '#92D8FF';
 export const LINK_HIGHLIGHT_COLOR = '#facc15';
 export const COLUMN_HIGHLIGHT_COLOR = '#facc15';

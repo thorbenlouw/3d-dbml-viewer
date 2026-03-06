@@ -40,10 +40,13 @@ import {
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
 import { estimateTableCardDimensions } from './tableCardMetrics';
-import ResetViewButton from './ResetViewButton';
 import { useForceSimulation } from '@/layout/useForceSimulation';
 import NavigationPanel from './NavigationPanel';
-import { getReferencedTablesForTable, shouldHighlightRelationship } from './hoverContext';
+import {
+  getReferencesForContext,
+  shouldHighlightRelationship,
+  type ReferencesForContext,
+} from './hoverContext';
 import LoadFileButton from '@/ui/LoadFileButton';
 import FocusMarker from './FocusMarker';
 import { resolveMarkerPlacementPosition } from './interaction';
@@ -693,15 +696,24 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     startTime: 0,
   });
 
-  const referencedTables = useMemo(() => {
-    if (!hoverContext) return [];
-    return getReferencedTablesForTable(schema, hoverContext.tableId);
+  const references = useMemo<ReferencesForContext | null>(() => {
+    if (!hoverContext) return null;
+    return getReferencesForContext(schema, hoverContext);
   }, [hoverContext, schema]);
   const focusMode = useMemo(() => {
     if (focusMarkerPosition) return 'marker';
     if (effectiveStickyTableId) return `sticky:${effectiveStickyTableId}`;
     return 'none';
   }, [focusMarkerPosition, effectiveStickyTableId]);
+  const helpText = useMemo(() => {
+    if (focusMode === 'none') {
+      return 'Double-click a Table or point in space to set and remove a fixed marker to rotate around';
+    }
+    if (focusMode === 'marker') {
+      return 'Double-click the marker again to release the rotation anchor';
+    }
+    return 'Double-click the highlighted table again to release the rotation anchor';
+  }, [focusMode]);
   const zoomDisplayValue = useMemo(() => 1 / Math.max(zoomScale, 1e-6), [zoomScale]);
   const handleZoomScaleFromControls = useCallback((nextZoomScale: number) => {
     setZoomScale((current) => {
@@ -846,7 +858,11 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             </p>
           </div>
         </div>
-        <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />
+        <NavigationPanel
+          hoverContext={hoverContext}
+          references={references}
+          projectName={schema.projectName}
+        />
       </div>
     );
   }
@@ -939,14 +955,17 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
         )}
       </Canvas>
 
-      <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />
+      <NavigationPanel
+        hoverContext={hoverContext}
+        references={references}
+        projectName={schema.projectName}
+      />
 
       <LoadFileButton onLoad={onLoadFile} />
-      <ResetViewButton onClick={handleResetView} />
       <div
         style={{
           position: 'fixed',
-          right: '1rem',
+          left: '1rem',
           bottom: '5.7rem',
           display: 'grid',
           gap: '0.5rem',
@@ -1029,6 +1048,35 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             />
           </div>
         </div>
+        <div
+          style={{
+            display: 'grid',
+            gap: '0.25rem',
+            border: `1px solid ${PANEL_BORDER_COLOR}`,
+            borderRadius: '0.4rem',
+            padding: '0.35rem',
+          }}
+        >
+          <div style={{ color: PANEL_TEXT_COLOR, fontSize: '0.75rem', fontWeight: 600 }}>View</div>
+          <button
+            type="button"
+            onClick={handleResetView}
+            aria-label="Reset camera to overview"
+            style={{
+              backgroundColor: '#1e293b',
+              border: `1px solid ${PANEL_BORDER_COLOR}`,
+              color: PANEL_TEXT_COLOR,
+              borderRadius: '0.375rem',
+              padding: '0.3rem 0.6rem',
+              cursor: 'pointer',
+              fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            Reset
+          </button>
+        </div>
       </div>
       <div
         style={{
@@ -1046,7 +1094,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           pointerEvents: 'none',
         }}
       >
-        Double-click a Table or point in space to set and remove a fixed marker to rotate around
+        {helpText}
       </div>
     </div>
   );
