@@ -26,9 +26,11 @@ import { useForceSimulation } from '@/layout/useForceSimulation';
 import { useDragCard } from './useDragCard';
 import NavigationPanel from './NavigationPanel';
 import { getReferencedTablesForTable, shouldHighlightRelationship } from './hoverContext';
+import LoadFileButton from '@/ui/LoadFileButton';
 
 interface SceneProps {
   schema: ParsedSchema;
+  onLoadFile: (text: string) => void;
 }
 
 interface CameraTweenState {
@@ -205,7 +207,7 @@ function DraggableTableCard({
   );
 }
 
-export default function Scene({ schema }: SceneProps): ReactElement {
+export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement {
   const hasWebGL = useMemo(() => {
     const canvas = document.createElement('canvas');
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
@@ -414,6 +416,7 @@ export default function Scene({ schema }: SceneProps): ReactElement {
 
       <NavigationPanel hoverContext={hoverContext} referencedTables={referencedTables} />
 
+      <LoadFileButton onLoad={onLoadFile} />
       <ResetViewButton onClick={handleResetView} />
       <button
         type="button"

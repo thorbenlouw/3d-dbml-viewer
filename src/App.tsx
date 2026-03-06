@@ -1,39 +1,60 @@
+import { useState, useEffect, useCallback } from 'react';
 import { parseDatabaseSchema, ParseError } from '@/parser';
-import { HARD_CODED_DBML } from '@/data/schema.dbml';
 import Scene from '@/renderer/Scene';
+import ErrorBanner from '@/ui/ErrorBanner';
 import type { ParsedSchema } from '@/types';
 import type { ReactElement } from 'react';
 
-interface AppData {
-  schema: ParsedSchema;
-  error: string | null;
-}
-
-function buildAppData(): AppData {
-  try {
-    const schema = parseDatabaseSchema(HARD_CODED_DBML);
-    return { schema, error: null };
-  } catch (err) {
-    if (err instanceof ParseError) {
-      console.error('ParseError:', err.message, err.cause);
-      return { schema: { tables: [], refs: [] }, error: err.message };
-    }
-    console.error('Unexpected error:', err);
-    return {
-      schema: { tables: [], refs: [] },
-      error: 'An unexpected error occurred',
-    };
-  }
-}
-
-const INITIAL_DATA: AppData = buildAppData();
-
 export default function App(): ReactElement {
-  if (INITIAL_DATA.error) {
+  const [schema, setSchema] = useState<ParsedSchema | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const handleSchemaLoad = useCallback((text: string): void => {
+    try {
+      const parsed = parseDatabaseSchema(text);
+      setSchema(parsed);
+      setLoadError(null);
+    } catch (err) {
+      if (err instanceof ParseError) {
+        setLoadError(err.message);
+      } else {
+        setLoadError('An unexpected error occurred');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch('/examples/blog.dbml')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      })
+      .then((text) => handleSchemaLoad(text))
+      .catch((err: unknown) => {
+        setLoadError(
+          `Failed to load default schema: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+  }, [handleSchemaLoad]);
+
+  if (schema === null) {
     return (
-      <div style={{ padding: '2rem', fontFamily: 'sans-serif', color: '#c00' }}>
-        <strong>Error loading schema:</strong> {INITIAL_DATA.error}
-      </div>
+      <>
+        <div
+          style={{
+            width: '100dvw',
+            height: '100dvh',
+            display: 'grid',
+            placeItems: 'center',
+            background: '#0f172a',
+            color: '#94a3b8',
+            fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+          }}
+        >
+          {loadError ? null : 'Loading…'}
+        </div>
+        <ErrorBanner message={loadError} />
+      </>
     );
   }
 
@@ -46,7 +67,8 @@ export default function App(): ReactElement {
         position: 'relative',
       }}
     >
-      <Scene schema={INITIAL_DATA.schema} />
+      <Scene schema={schema} onLoadFile={handleSchemaLoad} />
+      <ErrorBanner message={loadError} />
     </div>
   );
 }

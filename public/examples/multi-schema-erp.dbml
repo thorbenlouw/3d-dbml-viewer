@@ -1,0 +1,341 @@
+// ── shared schema ───────────────────────────────────────────────────────────
+
+Table currencies {
+  code char(3) [pk]
+  name varchar(100) [not null]
+  symbol varchar(10) [not null]
+
+  note: 'ISO 4217 currency codes used across the HR and Finance schemas.'
+}
+
+Table countries {
+  code char(2) [pk]
+  name varchar(100) [not null]
+  currency_code char(3) [not null]
+
+  note: 'ISO 3166-1 alpha-2 country codes. Linked to a default currency.'
+}
+
+Table audit_events {
+  id bigint [pk, increment]
+  schema_name varchar(50) [not null]
+  table_name varchar(100) [not null]
+  record_id varchar(255) [not null]
+  action varchar(20) [not null]
+  changed_by varchar(100) [not null]
+  changed_at timestamp [not null]
+  diff jsonb
+
+  note: '''
+    Cross-schema immutable audit log.
+    Stores the before/after diff as JSONB for all schema-tracked tables.
+    Partitioned monthly in production.
+  '''
+}
+
+// ── hr schema ───────────────────────────────────────────────────────────────
+
+Table departments {
+  id int [pk, increment]
+  name varchar(100) [not null]
+  cost_centre_code varchar(20) [not null]
+  country_code char(2) [not null]
+  head_employee_id int
+
+  note: 'Organisational departments. Each department maps to a finance cost centre.'
+}
+
+Table employees {
+  id int [pk, increment]
+  department_id int [not null]
+  country_code char(2) [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  email varchar(255) [not null, unique]
+  job_title varchar(100) [not null]
+  employment_type varchar(30) [not null]
+  hired_on date [not null]
+  terminated_on date
+
+  note: 'Current and former employees. terminated_on is null for active employees.'
+}
+
+Table contracts {
+  id int [pk, increment]
+  employee_id int [not null]
+  start_date date [not null]
+  end_date date
+  contract_type varchar(30) [not null]
+  salary decimal(14,2) [not null]
+  currency_code char(3) [not null]
+  signed_at timestamp
+
+  note: 'Employment contracts. An employee may have multiple sequential contracts.'
+}
+
+Table payroll_runs {
+  id int [pk, increment]
+  period_start date [not null]
+  period_end date [not null]
+  run_date date [not null]
+  status varchar(30) [not null]
+  approved_by_employee_id int
+
+  note: 'A batch payroll run covering a pay period. Must be approved before payment.'
+}
+
+Table payroll_entries {
+  id int [pk, increment]
+  payroll_run_id int [not null]
+  employee_id int [not null]
+  gross_pay decimal(14,2) [not null]
+  deductions decimal(14,2) [not null]
+  net_pay decimal(14,2) [not null]
+  currency_code char(3) [not null]
+
+  note: 'Individual payslip line within a payroll run.'
+}
+
+Table leave_types {
+  id int [pk, increment]
+  name varchar(100) [not null, unique]
+  days_per_year int [not null]
+  is_paid boolean [not null, default: true]
+
+  note: 'Configurable leave categories: annual, sick, parental, etc.'
+}
+
+Table leave_requests {
+  id int [pk, increment]
+  employee_id int [not null]
+  leave_type_id int [not null]
+  start_date date [not null]
+  end_date date [not null]
+  status varchar(30) [not null, default: 'pending']
+  reviewed_by_employee_id int
+  note text
+
+  note: 'Employee leave requests. Approval updates status to approved or rejected.'
+}
+
+Table performance_reviews {
+  id int [pk, increment]
+  employee_id int [not null]
+  reviewer_id int [not null]
+  review_period varchar(20) [not null]
+  rating int [not null]
+  comments text
+  submitted_at timestamp
+
+  note: 'Annual performance reviews submitted by a reviewer for an employee.'
+}
+
+Table job_postings {
+  id int [pk, increment]
+  department_id int [not null]
+  title varchar(255) [not null]
+  description text [not null]
+  country_code char(2) [not null]
+  status varchar(30) [not null, default: 'draft']
+  published_at timestamp
+  closed_at timestamp
+
+  note: 'Open job postings linked to the hiring department.'
+}
+
+Table benefits {
+  id int [pk, increment]
+  name varchar(100) [not null, unique]
+  description text
+  provider varchar(100)
+  is_active boolean [not null, default: true]
+
+  note: 'Employee benefit schemes: health insurance, gym, pension, etc.'
+}
+
+Table employee_benefits {
+  employee_id int [not null]
+  benefit_id int [not null]
+  enrolled_on date [not null]
+  unenrolled_on date
+
+  indexes {
+    (employee_id, benefit_id) [pk]
+  }
+
+  note: 'Tracks which benefits each employee is enrolled in.'
+}
+
+// ── finance schema ───────────────────────────────────────────────────────────
+
+Table cost_centres {
+  code varchar(20) [pk]
+  name varchar(100) [not null]
+  budget_owner_id int [not null]
+  parent_code varchar(20)
+
+  note: '''
+    Finance cost centres used for budget allocation and expense tracking.
+    Hierarchical: a centre may roll up into a parent centre.
+  '''
+}
+
+Table accounts {
+  id int [pk, increment]
+  code varchar(20) [not null, unique]
+  name varchar(100) [not null]
+  type varchar(30) [not null]
+  currency_code char(3) [not null]
+
+  note: 'Chart of accounts. type is one of: asset, liability, equity, revenue, expense.'
+}
+
+Table budgets {
+  id int [pk, increment]
+  cost_centre_code varchar(20) [not null]
+  fiscal_year int [not null]
+  amount decimal(18,2) [not null]
+  currency_code char(3) [not null]
+  approved_at timestamp
+
+  note: 'Annual budget allocations per cost centre.'
+}
+
+Table invoices {
+  id int [pk, increment]
+  vendor_name varchar(255) [not null]
+  cost_centre_code varchar(20) [not null]
+  account_id int [not null]
+  currency_code char(3) [not null]
+  amount decimal(14,2) [not null]
+  issued_on date [not null]
+  due_on date [not null]
+  paid_on date
+  status varchar(30) [not null, default: 'unpaid']
+
+  note: 'Vendor invoices received and tracked against a cost centre and account.'
+}
+
+Table invoice_line_items {
+  id int [pk, increment]
+  invoice_id int [not null]
+  description varchar(255) [not null]
+  quantity decimal(10,3) [not null]
+  unit_price decimal(14,2) [not null]
+  account_id int [not null]
+
+  note: 'Individual line items within a vendor invoice.'
+}
+
+Table journals {
+  id int [pk, increment]
+  reference varchar(100) [not null, unique]
+  description text
+  posted_at timestamp [not null]
+  posted_by_employee_id int [not null]
+
+  note: 'Accounting journal entries. Each journal has one or more journal lines.'
+}
+
+Table journal_lines {
+  id int [pk, increment]
+  journal_id int [not null]
+  account_id int [not null]
+  debit decimal(14,2) [not null, default: 0]
+  credit decimal(14,2) [not null, default: 0]
+  cost_centre_code varchar(20)
+
+  note: 'Double-entry lines within a journal. Debits must equal credits per journal.'
+}
+
+Table bank_accounts {
+  id int [pk, increment]
+  account_id int [not null]
+  bank_name varchar(100) [not null]
+  iban varchar(34)
+  swift_code varchar(11)
+  currency_code char(3) [not null]
+  country_code char(2) [not null]
+  is_active boolean [not null, default: true]
+
+  note: 'Physical bank accounts reconciled against a GL account.'
+}
+
+Table payment_runs {
+  id int [pk, increment]
+  bank_account_id int [not null]
+  run_date date [not null]
+  status varchar(30) [not null, default: 'pending']
+  approved_by_employee_id int
+  total_amount decimal(18,2) [not null]
+  currency_code char(3) [not null]
+
+  note: 'A batch outgoing payment run processed through a bank account.'
+}
+
+Table payment_items {
+  id int [pk, increment]
+  payment_run_id int [not null]
+  invoice_id int [not null]
+  amount decimal(14,2) [not null]
+
+  note: 'Individual invoice payments included in a payment run.'
+}
+
+Table tax_rates {
+  id int [pk, increment]
+  country_code char(2) [not null]
+  name varchar(100) [not null]
+  rate decimal(6,4) [not null]
+  valid_from date [not null]
+  valid_until date
+
+  note: 'Country-specific tax rates applied to invoice line items.'
+}
+
+// ── cross-schema refs ────────────────────────────────────────────────────────
+
+Ref: countries.currency_code > currencies.code
+Ref: departments.country_code > countries.code
+Ref: departments.cost_centre_code > cost_centres.code
+Ref: employees.department_id > departments.id
+Ref: employees.country_code > countries.code
+Ref: departments.head_employee_id > employees.id
+Ref: contracts.employee_id > employees.id
+Ref: contracts.currency_code > currencies.code
+Ref: payroll_runs.approved_by_employee_id > employees.id
+Ref: payroll_entries.payroll_run_id > payroll_runs.id
+Ref: payroll_entries.employee_id > employees.id
+Ref: payroll_entries.currency_code > currencies.code
+Ref: leave_requests.employee_id > employees.id
+Ref: leave_requests.leave_type_id > leave_types.id
+Ref: leave_requests.reviewed_by_employee_id > employees.id
+Ref: performance_reviews.employee_id > employees.id
+Ref: performance_reviews.reviewer_id > employees.id
+Ref: job_postings.department_id > departments.id
+Ref: job_postings.country_code > countries.code
+Ref: employee_benefits.employee_id > employees.id
+Ref: employee_benefits.benefit_id > benefits.id
+Ref: cost_centres.parent_code > cost_centres.code
+Ref: cost_centres.budget_owner_id > employees.id
+Ref: accounts.currency_code > currencies.code
+Ref: budgets.cost_centre_code > cost_centres.code
+Ref: budgets.currency_code > currencies.code
+Ref: invoices.cost_centre_code > cost_centres.code
+Ref: invoices.account_id > accounts.id
+Ref: invoices.currency_code > currencies.code
+Ref: invoice_line_items.invoice_id > invoices.id
+Ref: invoice_line_items.account_id > accounts.id
+Ref: journals.posted_by_employee_id > employees.id
+Ref: journal_lines.journal_id > journals.id
+Ref: journal_lines.account_id > accounts.id
+Ref: journal_lines.cost_centre_code > cost_centres.code
+Ref: bank_accounts.account_id > accounts.id
+Ref: bank_accounts.currency_code > currencies.code
+Ref: bank_accounts.country_code > countries.code
+Ref: payment_runs.bank_account_id > bank_accounts.id
+Ref: payment_runs.approved_by_employee_id > employees.id
+Ref: payment_runs.currency_code > currencies.code
+Ref: payment_items.payment_run_id > payment_runs.id
+Ref: payment_items.invoice_id > invoices.id
+Ref: tax_rates.country_code > countries.code

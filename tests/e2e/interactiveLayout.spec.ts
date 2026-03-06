@@ -57,6 +57,10 @@ test('interactive layout — canvas loads and tables are visible', async ({ page
   expect(box!.width).toBeGreaterThan(0);
   expect(box!.height).toBeGreaterThan(0);
 
+  // Reset camera to ensure all tables are in view regardless of which default schema is loaded
+  await page.getByLabel('Reset camera to overview').click();
+  await page.waitForTimeout(800); // allow camera tween to complete
+
   const didHoverUpdate = await hoverUntilNavigationUpdates(page);
   expect(didHoverUpdate).toBe(true);
 

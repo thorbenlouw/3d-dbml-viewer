@@ -1,0 +1,239 @@
+Table organizations {
+  id uuid [pk]
+  name varchar(255) [not null]
+  slug varchar(100) [not null, unique]
+  plan varchar(50) [not null, default: 'free']
+  created_at timestamp [not null]
+
+  note: 'Top-level tenant in the multi-tenant SaaS platform.'
+}
+
+Table users {
+  id uuid [pk]
+  email varchar(255) [not null, unique]
+  display_name varchar(100) [not null]
+  password_hash varchar(255)
+  email_verified_at timestamp
+  last_login_at timestamp
+  created_at timestamp [not null]
+
+  note: 'Platform users. May belong to multiple organizations via memberships.'
+}
+
+Table workspaces {
+  id uuid [pk]
+  organization_id uuid [not null]
+  name varchar(255) [not null]
+  slug varchar(100) [not null]
+  created_at timestamp [not null]
+
+  note: 'Sub-division of an organization for project isolation.'
+}
+
+Table memberships {
+  id uuid [pk]
+  user_id uuid [not null]
+  organization_id uuid [not null]
+  role varchar(50) [not null, default: 'member']
+  joined_at timestamp [not null]
+
+  note: 'Connects a user to an organization with a given role.'
+}
+
+Table workspace_members {
+  workspace_id uuid [not null]
+  user_id uuid [not null]
+  role varchar(50) [not null, default: 'editor']
+
+  indexes {
+    (workspace_id, user_id) [pk]
+  }
+
+  note: 'Assigns a user to a workspace within an organization.'
+}
+
+Table subscriptions {
+  id uuid [pk]
+  organization_id uuid [not null]
+  plan varchar(50) [not null]
+  status varchar(30) [not null]
+  current_period_start timestamp [not null]
+  current_period_end timestamp [not null]
+  cancelled_at timestamp
+
+  note: 'Billing subscription record for an organization.'
+}
+
+Table invoices {
+  id uuid [pk]
+  subscription_id uuid [not null]
+  amount_cents int [not null]
+  currency char(3) [not null, default: 'USD']
+  status varchar(30) [not null]
+  issued_at timestamp [not null]
+  paid_at timestamp
+
+  note: 'Monthly billing invoices generated for each subscription period.'
+}
+
+Table feature_flags {
+  id uuid [pk]
+  key varchar(100) [not null, unique]
+  description text
+  default_enabled boolean [not null, default: false]
+  created_at timestamp [not null]
+
+  note: 'Global feature flag definitions managed by the platform team.'
+}
+
+Table feature_flag_overrides {
+  id uuid [pk]
+  flag_id uuid [not null]
+  organization_id uuid [not null]
+  enabled boolean [not null]
+  set_at timestamp [not null]
+
+  note: 'Per-organization overrides for feature flags, e.g. beta access.'
+}
+
+Table api_keys {
+  id uuid [pk]
+  organization_id uuid [not null]
+  created_by_user_id uuid [not null]
+  name varchar(100) [not null]
+  key_hash varchar(255) [not null, unique]
+  scopes text [not null]
+  last_used_at timestamp
+  expires_at timestamp
+  revoked_at timestamp
+  created_at timestamp [not null]
+
+  note: 'API keys for programmatic access. The raw key is never stored, only its hash.'
+}
+
+Table audit_logs {
+  id uuid [pk]
+  organization_id uuid [not null]
+  actor_user_id uuid
+  action varchar(100) [not null]
+  resource_type varchar(100) [not null]
+  resource_id varchar(255) [not null]
+  metadata jsonb
+  occurred_at timestamp [not null]
+
+  note: 'Immutable audit trail of security-relevant actions within an organization.'
+}
+
+Table notifications {
+  id uuid [pk]
+  user_id uuid [not null]
+  type varchar(100) [not null]
+  title varchar(255) [not null]
+  body text [not null]
+  read_at timestamp
+  created_at timestamp [not null]
+
+  note: 'In-app notifications delivered to individual users.'
+}
+
+Table integrations {
+  id uuid [pk]
+  organization_id uuid [not null]
+  provider varchar(100) [not null]
+  config jsonb [not null]
+  enabled boolean [not null, default: true]
+  created_at timestamp [not null]
+
+  note: 'Third-party service integrations configured per organization (Slack, GitHub, etc.).'
+}
+
+Table webhooks {
+  id uuid [pk]
+  organization_id uuid [not null]
+  url varchar(2048) [not null]
+  secret_hash varchar(255) [not null]
+  events text [not null]
+  enabled boolean [not null, default: true]
+  created_at timestamp [not null]
+
+  note: 'Outbound webhook endpoints subscribed to platform events.'
+}
+
+Table webhook_deliveries {
+  id uuid [pk]
+  webhook_id uuid [not null]
+  event_type varchar(100) [not null]
+  payload jsonb [not null]
+  response_status int
+  delivered_at timestamp
+  attempt_count int [not null, default: 0]
+  next_retry_at timestamp
+
+  note: 'Delivery attempts for each webhook event, including retry metadata.'
+}
+
+Table usage_metrics {
+  id uuid [pk]
+  organization_id uuid [not null]
+  metric_name varchar(100) [not null]
+  value bigint [not null]
+  recorded_at timestamp [not null]
+
+  note: 'Usage telemetry aggregated per organization for billing and monitoring.'
+}
+
+Table sessions {
+  id uuid [pk]
+  user_id uuid [not null]
+  ip_address varchar(45) [not null]
+  user_agent text
+  created_at timestamp [not null]
+  expires_at timestamp [not null]
+  revoked_at timestamp
+
+  note: 'Active login sessions for web and API clients.'
+}
+
+Table password_reset_tokens {
+  id uuid [pk]
+  user_id uuid [not null]
+  token_hash varchar(255) [not null, unique]
+  expires_at timestamp [not null]
+  used_at timestamp
+
+  note: 'Short-lived tokens for the forgot-password flow.'
+}
+
+Table oauth_accounts {
+  id uuid [pk]
+  user_id uuid [not null]
+  provider varchar(50) [not null]
+  provider_user_id varchar(255) [not null]
+  access_token_hash varchar(255)
+  refresh_token_hash varchar(255)
+  linked_at timestamp [not null]
+
+  note: 'OAuth2 provider accounts linked to a platform user.'
+}
+
+Ref: workspaces.organization_id > organizations.id
+Ref: memberships.user_id > users.id
+Ref: memberships.organization_id > organizations.id
+Ref: workspace_members.workspace_id > workspaces.id
+Ref: workspace_members.user_id > users.id
+Ref: subscriptions.organization_id > organizations.id
+Ref: invoices.subscription_id > subscriptions.id
+Ref: feature_flag_overrides.flag_id > feature_flags.id
+Ref: feature_flag_overrides.organization_id > organizations.id
+Ref: api_keys.organization_id > organizations.id
+Ref: api_keys.created_by_user_id > users.id
+Ref: audit_logs.organization_id > organizations.id
+Ref: audit_logs.actor_user_id > users.id
+Ref: notifications.user_id > users.id
+Ref: integrations.organization_id > organizations.id
+Ref: webhooks.organization_id > organizations.id
+Ref: webhook_deliveries.webhook_id > webhooks.id
+Ref: usage_metrics.organization_id > organizations.id
+Ref: sessions.user_id > users.id
+Ref: password_reset_tokens.user_id > users.id
+Ref: oauth_accounts.user_id > users.id
