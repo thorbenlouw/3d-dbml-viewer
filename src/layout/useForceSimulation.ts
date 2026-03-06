@@ -66,7 +66,10 @@ function toSimulationNode(n: D3Node): SimulationNode {
   };
 }
 
-export function useForceSimulation(schema: ParsedSchema): {
+export function useForceSimulation(
+  schema: ParsedSchema,
+  onSettled?: (nodes: SimulationNode[]) => void,
+): {
   nodes: SimulationNode[];
   setPin: (id: string, position: { x: number; y: number; z: number } | null) => void;
   nudge: (id: string, delta: { x: number; y: number; z: number }, neighbourFactor: number) => void;
@@ -76,7 +79,6 @@ export function useForceSimulation(schema: ParsedSchema): {
   const neighbourMapRef = useRef<Map<string, string[]>>(new Map());
   const draggingIdRef = useRef<string | null>(null);
   const simRef = useRef<ReturnType<typeof forceSimulation> | null>(null);
-
   // Initialise with seeded positions so the first render has data immediately
   const [nodes, setNodes] = useState<SimulationNode[]>(() =>
     buildLiveNodes(schema.tables).map(toSimulationNode),
@@ -114,7 +116,7 @@ export function useForceSimulation(schema: ParsedSchema): {
         'link',
         forceLink<D3Node, D3Link>(links)
           .id((d) => d.id)
-          .distance(3),
+          .distance(1.5),
       )
       .force('cx', forceX(0).strength(0.1))
       .force('cy', forceY(0).strength(0.1))
@@ -123,11 +125,16 @@ export function useForceSimulation(schema: ParsedSchema): {
 
     simRef.current = sim;
 
+    let hasSettled = false;
     let rafId: number;
     const tick = () => {
       const s = simRef.current;
       if (s && s.alpha() > s.alphaMin()) {
         s.tick();
+        if (!hasSettled && s.alpha() < 0.05) {
+          hasSettled = true;
+          onSettled?.(liveNodesRef.current.map(toSimulationNode));
+        }
       }
       setNodes(liveNodesRef.current.map(toSimulationNode));
       rafId = requestAnimationFrame(tick);
@@ -138,7 +145,7 @@ export function useForceSimulation(schema: ParsedSchema): {
       cancelAnimationFrame(rafId);
       simRef.current = null;
     };
-  }, [schema]);
+  }, [schema, onSettled]);
 
   const setPin = useCallback(
     (id: string, position: { x: number; y: number; z: number } | null) => {

@@ -170,6 +170,42 @@ describe('useForceSimulation', () => {
     expect(after.t2.z).toBeCloseTo(before.t2.z + delta.z * factor, 4);
   });
 
+  it('calls onSettled once after simulation alpha drops below 0.05', () => {
+    const onSettled = vi.fn();
+    renderHook(() => useForceSimulation(schema, onSettled));
+
+    // Run enough frames for alpha to decay below 0.05 (needs ~131 ticks)
+    runFrames(200);
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    const nodes = onSettled.mock.calls[0][0] as { id: string }[];
+    expect(nodes).toHaveLength(schema.tables.length);
+  });
+
+  it('onSettled fires again when a new schema is provided', () => {
+    const onSettled = vi.fn();
+    const schema2: ParsedSchema = {
+      tables: [
+        { id: 'a1', name: 'alpha', columns: [], note: undefined },
+        { id: 'a2', name: 'beta', columns: [], note: undefined },
+      ],
+      refs: [],
+    };
+
+    const { rerender } = renderHook(
+      ({ s }: { s: ParsedSchema }) => useForceSimulation(s, onSettled),
+      { initialProps: { s: schema } },
+    );
+
+    runFrames(200);
+    expect(onSettled).toHaveBeenCalledTimes(1);
+
+    // Switch to new schema — should reset and fire again
+    rerender({ s: schema2 });
+    runFrames(200);
+    expect(onSettled).toHaveBeenCalledTimes(2);
+  });
+
   it('nudge does not move pinned neighbours', () => {
     const { result } = renderHook(() => useForceSimulation(schema));
 

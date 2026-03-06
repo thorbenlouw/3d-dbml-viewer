@@ -51,6 +51,9 @@ export const PANEL_BORDER_COLOR = 'rgba(148, 163, 184, 0.35)';
 export const SCENE_FONT_REGULAR = '/fonts/Inter-Regular.ttf';
 export const SCENE_FONT_BOLD = '/fonts/Inter-Bold.ttf';
 
+export const TITLE_SCALE_MAX = 2.5;
+export const FLY_TO_DISTANCE = 5;
+
 export const NOTE_ICON_CHAR = '✎';
 export const NOTE_ICON_SIZE = 0.065;
 export const NOTE_HIGHLIGHT_COLOR = PANEL_ACCENT_COLOR;

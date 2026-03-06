@@ -34,6 +34,7 @@ import {
   TEXT_COLOR,
   TEXT_HEADER_SIZE,
   TEXT_ROW_SIZE,
+  TITLE_SCALE_MAX,
 } from './constants';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 
@@ -52,6 +53,7 @@ interface TableCardProps {
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
   dragHandlers?: DragHandlers;
+  onFlyTo?: (tableId: string) => void;
 }
 
 interface FieldBadge {
@@ -101,6 +103,7 @@ export default function TableCard({
   onTableHoverChange,
   onColumnHoverChange,
   dragHandlers,
+  onFlyTo,
 }: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
@@ -109,6 +112,7 @@ export default function TableCard({
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const rowHitMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const titleScaleGroupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
   const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
@@ -151,6 +155,15 @@ export default function TableCard({
     const opacity = OPACITY_FAR + t * (OPACITY_NEAR - OPACITY_FAR);
     headerMaterialRef.current.opacity = opacity;
     bodyMaterialRef.current.opacity = opacity;
+
+    if (titleScaleGroupRef.current) {
+      const titleT = Math.max(
+        0,
+        Math.min(1, (dist - DISTANCE_NEAR) / (DISTANCE_FAR - DISTANCE_NEAR)),
+      );
+      const titleScale = 1 + titleT * (TITLE_SCALE_MAX - 1);
+      titleScaleGroupRef.current.scale.setScalar(titleScale);
+    }
   });
 
   return (
@@ -209,23 +222,28 @@ export default function TableCard({
             event.stopPropagation();
             onTableHoverChange?.(null);
           }}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            onFlyTo?.(node.id);
+          }}
         >
           <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
           <meshBasicMaterial ref={headerHitMaterialRef} transparent opacity={0} />
         </mesh>
       )}
 
-      <Text
-        font={SCENE_FONT_REGULAR}
-        color={highlightedColumn === '__table__' ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
-        fontSize={TEXT_HEADER_SIZE}
-        position={[0, headerY, dimensions.depth / 2 + 0.012]}
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={dimensions.width - CARD_HORIZONTAL_PADDING * 2}
-      >
-        {truncate(node.table.name, 32)}
-      </Text>
+      <group ref={titleScaleGroupRef} position={[0, headerY, dimensions.depth / 2 + 0.012]}>
+        <Text
+          font={SCENE_FONT_REGULAR}
+          color={highlightedColumn === '__table__' ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
+          fontSize={TEXT_HEADER_SIZE}
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={dimensions.width - CARD_HORIZONTAL_PADDING * 2}
+        >
+          {truncate(node.table.name, 32)}
+        </Text>
+      </group>
 
       {node.table.note && (
         <Text

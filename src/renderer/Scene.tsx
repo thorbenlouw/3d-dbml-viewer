@@ -17,7 +17,12 @@ import type {
   SimulationNode,
   TableCardNode,
 } from '@/types';
-import { PANEL_ACCENT_COLOR, RESET_TWEEN_DURATION_MS, SCENE_BG_COLOR } from './constants';
+import {
+  FLY_TO_DISTANCE,
+  PANEL_ACCENT_COLOR,
+  RESET_TWEEN_DURATION_MS,
+  SCENE_BG_COLOR,
+} from './constants';
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
 import { estimateTableCardDimensions } from './tableCardMetrics';
@@ -45,6 +50,9 @@ interface CameraTweenState {
 interface CameraControllerProps {
   tweenStateRef: RefObject<CameraTweenState>;
   controlsRef: RefObject<ComponentRef<typeof OrbitControls> | null>;
+  pendingTweenRef: RefObject<CameraFrame | null>;
+  settledFrameRef: RefObject<CameraFrame | null>;
+  shouldTweenToSettledRef: RefObject<boolean>;
 }
 
 interface CameraFrame {
@@ -61,6 +69,7 @@ interface DraggableTableCardProps {
   onDragStart: (id: string, pos: THREE.Vector3) => void;
   onDragMove: (id: string, delta: THREE.Vector3) => void;
   onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
+  onFlyTo?: (tableId: string) => void;
 }
 
 function easeInOutCubic(t: number): number {
@@ -106,14 +115,48 @@ function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
   return models;
 }
 
-function CameraController({ tweenStateRef, controlsRef }: CameraControllerProps): null {
-  const { camera } = useThree();
-
+function CameraController({
+  tweenStateRef,
+  controlsRef,
+  pendingTweenRef,
+  settledFrameRef,
+  shouldTweenToSettledRef,
+}: CameraControllerProps): null {
   useFrame(() => {
-    const state = tweenStateRef.current;
     const controls = controlsRef.current;
-    if (!state || !controls || !state.active) return;
+    if (!controls) return;
 
+    // Check for pending settle tween request
+    if (shouldTweenToSettledRef.current && settledFrameRef.current) {
+      shouldTweenToSettledRef.current = false;
+      tweenStateRef.current = {
+        active: true,
+        startPosition: controls.object.position.clone(),
+        endPosition: settledFrameRef.current.position,
+        startTarget: controls.target.clone(),
+        endTarget: settledFrameRef.current.target,
+        startTime: Date.now(),
+      };
+    }
+
+    // Check for ad-hoc tween request (reset view, fly-to)
+    if (pendingTweenRef.current) {
+      const frame = pendingTweenRef.current;
+      pendingTweenRef.current = null;
+      tweenStateRef.current = {
+        active: true,
+        startPosition: controls.object.position.clone(),
+        endPosition: frame.position,
+        startTarget: controls.target.clone(),
+        endTarget: frame.target,
+        startTime: Date.now(),
+      };
+    }
+
+    const state = tweenStateRef.current;
+    if (!state || !state.active) return;
+
+    const camera = controls.object;
     const elapsed = Date.now() - state.startTime;
     const progress = Math.min(elapsed / RESET_TWEEN_DURATION_MS, 1);
     const eased = easeInOutCubic(progress);
@@ -179,6 +222,7 @@ function DraggableTableCard({
   onDragStart,
   onDragMove,
   onDragEnd,
+  onFlyTo,
 }: DraggableTableCardProps): ReactElement {
   const { camera, gl } = useThree();
   const worldPosition = useMemo(
@@ -203,6 +247,7 @@ function DraggableTableCard({
       onTableHoverChange={onTableHoverChange}
       onColumnHoverChange={onColumnHoverChange}
       dragHandlers={isRearrangeMode ? dragHandlers : undefined}
+      onFlyTo={!isRearrangeMode ? onFlyTo : undefined}
     />
   );
 }
@@ -217,8 +262,55 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
 
   const controlsRef = useRef<ComponentRef<typeof OrbitControls> | null>(null);
+  const settledFrameRef = useRef<CameraFrame | null>(null);
+  const hasFittedOnceRef = useRef<boolean>(false);
+  const shouldTweenToSettledRef = useRef<boolean>(false);
+  const pendingTweenRef = useRef<CameraFrame | null>(null);
 
-  const { nodes: simNodes, setPin, nudge } = useForceSimulation(schema);
+  const handleSettled = useCallback(
+    (settledNodes: SimulationNode[]) => {
+      const tableMap = new Map(schema.tables.map((t) => [t.id, t]));
+      const points: THREE.Vector3[] = [];
+      for (const node of settledNodes) {
+        const table = tableMap.get(node.id);
+        if (!table) continue;
+        const dimensions = estimateTableCardDimensions(table);
+        points.push(
+          new THREE.Vector3(
+            node.x - dimensions.width * 0.5,
+            node.y - dimensions.height * 0.5,
+            node.z,
+          ),
+        );
+        points.push(
+          new THREE.Vector3(
+            node.x + dimensions.width * 0.5,
+            node.y + dimensions.height * 0.5,
+            node.z + dimensions.depth,
+          ),
+        );
+      }
+      const frame = computeCameraFrameFromPoints(points, 60);
+      settledFrameRef.current = frame;
+
+      const controls = controlsRef.current;
+      if (!hasFittedOnceRef.current) {
+        // First settlement: snap camera immediately
+        if (controls) {
+          controls.object.position.copy(frame.position);
+          controls.target.copy(frame.target);
+          controls.update();
+          hasFittedOnceRef.current = true;
+        }
+      } else {
+        // Subsequent settlement (new file loaded): request tween via flag
+        shouldTweenToSettledRef.current = true;
+      }
+    },
+    [schema.tables],
+  );
+
+  const { nodes: simNodes, setPin, nudge } = useForceSimulation(schema, handleSettled);
 
   const cardNodes = useMemo(() => buildCardNodes(simNodes, schema), [simNodes, schema]);
   const linkModels = useMemo(() => buildLinkModels(schema), [schema]);
@@ -281,17 +373,27 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   }, [hoverContext, schema]);
 
   const handleResetView = useCallback((): void => {
-    const controls = controlsRef.current;
-    if (!controls) return;
-
-    const resetFrame = computeCameraFrameFromPoints(framePoints, 60);
-    tweenStateRef.current.active = true;
-    tweenStateRef.current.startPosition = controls.object.position.clone();
-    tweenStateRef.current.endPosition = resetFrame.position;
-    tweenStateRef.current.startTarget = controls.target.clone();
-    tweenStateRef.current.endTarget = resetFrame.target;
-    tweenStateRef.current.startTime = Date.now();
+    const resetFrame = settledFrameRef.current ?? computeCameraFrameFromPoints(framePoints, 60);
+    pendingTweenRef.current = resetFrame;
   }, [framePoints]);
+
+  const handleFlyTo = useCallback(
+    (tableId: string): void => {
+      const node = cardById.get(tableId);
+      const controls = controlsRef.current;
+      if (!node || !controls) return;
+
+      const endTarget = new THREE.Vector3(node.x, node.y, node.z);
+      const forward = new THREE.Vector3();
+      controls.object.getWorldDirection(forward);
+      const endPosition = endTarget
+        .clone()
+        .add(forward.negate().normalize().multiplyScalar(FLY_TO_DISTANCE));
+
+      pendingTweenRef.current = { position: endPosition, target: endTarget };
+    },
+    [cardById],
+  );
 
   const handleDragStart = useCallback(
     (id: string, pos: THREE.Vector3) => {
@@ -372,7 +474,13 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           enableDamping
           dampingFactor={0.1}
         />
-        <CameraController tweenStateRef={tweenStateRef} controlsRef={controlsRef} />
+        <CameraController
+          tweenStateRef={tweenStateRef}
+          controlsRef={controlsRef}
+          pendingTweenRef={pendingTweenRef}
+          settledFrameRef={settledFrameRef}
+          shouldTweenToSettledRef={shouldTweenToSettledRef}
+        />
 
         {linkModels.map((link) => {
           const source = cardById.get(link.sourceId);
@@ -409,6 +517,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
               onDragEnd={handleDragEnd}
+              onFlyTo={handleFlyTo}
             />
           );
         })}
