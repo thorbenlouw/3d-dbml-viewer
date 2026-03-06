@@ -44,7 +44,7 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
         style={{
           position: 'fixed',
           bottom: '1rem',
-          right: '15.5rem',
+          left: '1rem',
           backgroundColor: '#334155',
           color: '#ffffff',
           fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
