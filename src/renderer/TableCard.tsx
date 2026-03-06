@@ -1,5 +1,4 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import type { ThreeEvent } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as THREE from 'three';
@@ -41,22 +40,12 @@ import {
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
 
-interface DragHandlers {
-  onPointerDown: (e: ThreeEvent<PointerEvent>) => void;
-  onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
-  onPointerUp: (e: ThreeEvent<PointerEvent>) => void;
-  onPointerEnter: () => void;
-  onPointerLeave: () => void;
-  onDoubleClick: (e: ThreeEvent<MouseEvent>) => void;
-}
-
 interface TableCardProps {
   node: TableCardNode;
   isSticky?: boolean;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
-  dragHandlers?: DragHandlers;
   onHeaderDoubleClick?: (tableId: string) => void;
 }
 
@@ -107,13 +96,11 @@ export default function TableCard({
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
-  dragHandlers,
   onHeaderDoubleClick,
 }: TableCardProps): ReactElement {
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const dragHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const tableHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const rowHitMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
@@ -139,7 +126,6 @@ export default function TableCard({
     if (groupRef.current) {
       groupRef.current.userData[SCENE_INTERACTION_ROLE] = SCENE_ROLE_TABLE_CARD;
     }
-    if (dragHitMaterialRef.current) dragHitMaterialRef.current.depthWrite = false;
     if (tableHitMaterialRef.current) tableHitMaterialRef.current.depthWrite = false;
     if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
     for (const material of rowHitMaterialRefs.current) {
@@ -177,11 +163,7 @@ export default function TableCard({
   });
 
   return (
-    <group
-      ref={groupRef}
-      position={[node.x, node.y, node.z]}
-      onDoubleClick={dragHandlers?.onDoubleClick}
-    >
+    <group ref={groupRef} position={[node.x, node.y, node.z]}>
       <mesh position={[0, bodyY, 0]}>
         <boxGeometry args={[dimensions.width, bodyHeight, dimensions.depth]} />
         <meshBasicMaterial
@@ -215,54 +197,35 @@ export default function TableCard({
         </lineSegments>
       )}
 
-      {/* Full-card transparent hit mesh for drag events */}
-      {dragHandlers && (
-        <mesh
-          position={[0, 0, dimensions.depth / 2 + 0.005]}
-          onPointerDown={dragHandlers.onPointerDown}
-          onPointerMove={dragHandlers.onPointerMove}
-          onPointerUp={dragHandlers.onPointerUp}
-          onPointerEnter={dragHandlers.onPointerEnter}
-          onPointerLeave={dragHandlers.onPointerLeave}
-        >
-          <boxGeometry args={[dimensions.width, dimensions.height, 0.01]} />
-          <meshBasicMaterial ref={dragHitMaterialRef} transparent opacity={0} />
-        </mesh>
-      )}
+      <mesh
+        position={[0, 0, dimensions.depth / 2 + 0.013]}
+        onPointerEnter={(event) => {
+          event.stopPropagation();
+          onTableHoverChange?.(toTableHoverContext(node));
+        }}
+        onPointerMove={(event) => {
+          event.stopPropagation();
+          onTableHoverChange?.(toTableHoverContext(node));
+        }}
+      >
+        <boxGeometry args={[dimensions.width * 1.8, dimensions.height * 1.8, 0.012]} />
+        <meshBasicMaterial ref={tableHitMaterialRef} transparent opacity={0} />
+      </mesh>
 
-      {!dragHandlers && (
-        <mesh
-          position={[0, 0, dimensions.depth / 2 + 0.013]}
-          onPointerEnter={(event) => {
-            event.stopPropagation();
-            onTableHoverChange?.(toTableHoverContext(node));
-          }}
-          onPointerMove={(event) => {
-            event.stopPropagation();
-            onTableHoverChange?.(toTableHoverContext(node));
-          }}
-        >
-          <boxGeometry args={[dimensions.width * 1.8, dimensions.height * 1.8, 0.012]} />
-          <meshBasicMaterial ref={tableHitMaterialRef} transparent opacity={0} />
-        </mesh>
-      )}
-
-      {!dragHandlers && (
-        <mesh
-          position={[0, headerY, dimensions.depth / 2 + 0.014]}
-          onPointerEnter={(event) => {
-            event.stopPropagation();
-            onTableHoverChange?.(toTableHoverContext(node));
-          }}
-          onDoubleClick={(event) => {
-            event.stopPropagation();
-            onHeaderDoubleClick?.(node.id);
-          }}
-        >
-          <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
-          <meshBasicMaterial ref={headerHitMaterialRef} transparent opacity={0} />
-        </mesh>
-      )}
+      <mesh
+        position={[0, headerY, dimensions.depth / 2 + 0.014]}
+        onPointerEnter={(event) => {
+          event.stopPropagation();
+          onTableHoverChange?.(toTableHoverContext(node));
+        }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onHeaderDoubleClick?.(node.id);
+        }}
+      >
+        <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, 0.015]} />
+        <meshBasicMaterial ref={headerHitMaterialRef} transparent opacity={0} />
+      </mesh>
 
       <group ref={titleScaleGroupRef} position={[0, headerY, dimensions.depth / 2 + 0.012]}>
         <Text
@@ -308,28 +271,26 @@ export default function TableCard({
 
         return (
           <group key={`${node.id}-${column.name}-${index}`}>
-            {!dragHandlers && (
-              <mesh
-                position={[0, rowY, dimensions.depth / 2 + 0.015]}
-                onPointerEnter={(event) => {
-                  event.stopPropagation();
-                  onColumnHoverChange?.(toColumnHoverContext(node, column));
+            <mesh
+              position={[0, rowY, dimensions.depth / 2 + 0.015]}
+              onPointerEnter={(event) => {
+                event.stopPropagation();
+                onColumnHoverChange?.(toColumnHoverContext(node, column));
+              }}
+              onPointerLeave={(event) => {
+                event.stopPropagation();
+                onColumnHoverChange?.(toTableHoverContext(node));
+              }}
+            >
+              <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, 0.015]} />
+              <meshBasicMaterial
+                ref={(material) => {
+                  rowHitMaterialRefs.current[index] = material;
                 }}
-                onPointerLeave={(event) => {
-                  event.stopPropagation();
-                  onColumnHoverChange?.(toTableHoverContext(node));
-                }}
-              >
-                <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, 0.015]} />
-                <meshBasicMaterial
-                  ref={(material) => {
-                    rowHitMaterialRefs.current[index] = material;
-                  }}
-                  transparent
-                  opacity={0}
-                />
-              </mesh>
-            )}
+                transparent
+                opacity={0}
+              />
+            </mesh>
 
             <mesh position={[0, rowY, dimensions.depth / 2 - rowSliceDepth / 2 + 0.001]}>
               <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, rowSliceDepth]} />

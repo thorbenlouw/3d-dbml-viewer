@@ -24,7 +24,6 @@ import {
   CONNECTION_SCALE_MIN,
   CONNECTION_SCALE_UNITS_PER_SECOND,
   HOLD_CONTROL_INTERVAL_MS,
-  PANEL_ACCENT_COLOR,
   PANEL_BG_COLOR,
   PANEL_BORDER_COLOR,
   PANEL_TEXT_COLOR,
@@ -43,7 +42,6 @@ import RelationshipLink3D from './RelationshipLink3D';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import ResetViewButton from './ResetViewButton';
 import { useForceSimulation } from '@/layout/useForceSimulation';
-import { useDragCard } from './useDragCard';
 import NavigationPanel from './NavigationPanel';
 import { getReferencedTablesForTable, shouldHighlightRelationship } from './hoverContext';
 import LoadFileButton from '@/ui/LoadFileButton';
@@ -97,10 +95,6 @@ interface DraggableTableCardProps {
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
-  isRearrangeMode: boolean;
-  onDragStart: (id: string, pos: THREE.Vector3) => void;
-  onDragMove: (id: string, delta: THREE.Vector3) => void;
-  onDragEnd: (id: string, pos: THREE.Vector3, isPinRelease: boolean) => void;
   onHeaderDoubleClick?: (tableId: string) => void;
 }
 
@@ -536,36 +530,15 @@ function DraggableTableCard({
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
-  isRearrangeMode,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
   onHeaderDoubleClick,
 }: DraggableTableCardProps): ReactElement {
-  const { camera, gl } = useThree();
-  const worldPosition = useMemo(
-    () => new THREE.Vector3(node.x, node.y, node.z),
-    [node.x, node.y, node.z],
-  );
-
-  const dragHandlers = useDragCard({
-    nodeId: node.id,
-    worldPosition,
-    camera,
-    gl,
-    onDragStart,
-    onDragMove,
-    onDragEnd,
-  });
-
   return (
     <TableCard
       node={node}
       highlightedColumn={highlightedColumn}
       onTableHoverChange={onTableHoverChange}
       onColumnHoverChange={onColumnHoverChange}
-      dragHandlers={isRearrangeMode ? dragHandlers : undefined}
-      onHeaderDoubleClick={!isRearrangeMode ? onHeaderDoubleClick : undefined}
+      onHeaderDoubleClick={onHeaderDoubleClick}
       isSticky={isSticky}
     />
   );
@@ -577,7 +550,6 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
   }, []);
 
-  const [isRearrangeMode, setIsRearrangeMode] = useState(false);
   const [hoverContext, setHoverContext] = useState<HoverContext | null>(null);
   const [stickyTableId, setStickyTableId] = useState<string | null>(null);
   const [focusMarkerState, setFocusMarkerState] = useState<FocusMarkerState | null>(null);
@@ -653,11 +625,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     [schema.tables],
   );
 
-  const {
-    nodes: simNodes,
-    setPin,
-    nudge,
-  } = useForceSimulation(schema, {
+  const { nodes: simNodes } = useForceSimulation(schema, {
     onSettled: handleSettled,
     stickyTableId: stickyTableIdForSchema,
     linkDistanceScale,
@@ -850,33 +818,6 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     setFocusMarkerState(null);
   }, []);
 
-  const handleDragStart = useCallback(
-    (id: string, pos: THREE.Vector3) => {
-      setPin(id, { x: pos.x, y: pos.y, z: pos.z });
-      if (controlsRef.current) controlsRef.current.enabled = false;
-    },
-    [setPin],
-  );
-
-  const handleDragMove = useCallback(
-    (id: string, delta: THREE.Vector3) => {
-      nudge(id, { x: delta.x, y: delta.y, z: delta.z }, 0.6);
-    },
-    [nudge],
-  );
-
-  const handleDragEnd = useCallback(
-    (id: string, pos: THREE.Vector3, isPinRelease: boolean) => {
-      if (isPinRelease) {
-        setPin(id, null);
-      } else {
-        setPin(id, { x: pos.x, y: pos.y, z: pos.z });
-      }
-      if (controlsRef.current) controlsRef.current.enabled = true;
-    },
-    [setPin],
-  );
-
   if (hasWebGL === false) {
     return (
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -939,7 +880,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           dampingFactor={0.1}
         />
         <SceneInteractionLayer
-          enabled={!isRearrangeMode}
+          enabled
           focusMarkerPosition={focusMarkerPosition}
           onFocusMarkerDoubleClick={handleRemoveFocusMarker}
           onEmptySpaceDoubleClick={handleEmptySpaceDoubleClick}
@@ -989,10 +930,6 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
               highlightedColumn={highlightedColumn}
               onTableHoverChange={setHoverContext}
               onColumnHoverChange={setHoverContext}
-              isRearrangeMode={isRearrangeMode}
-              onDragStart={handleDragStart}
-              onDragMove={handleDragMove}
-              onDragEnd={handleDragEnd}
               onHeaderDoubleClick={handleHeaderDoubleClick}
             />
           );
@@ -1093,36 +1030,24 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() =>
-          setIsRearrangeMode((current) => {
-            const next = !current;
-            if (next) {
-              setHoverContext(null);
-            }
-            return next;
-          })
-        }
-        aria-label={isRearrangeMode ? 'Switch to Navigate mode' : 'Switch to Re-arrange mode'}
+      <div
         style={{
           position: 'fixed',
-          bottom: '1rem',
-          right: '8.2rem',
-          backgroundColor: isRearrangeMode ? PANEL_ACCENT_COLOR : '#334155',
-          color: '#ffffff',
-          fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
-          padding: '0.5rem 1rem',
-          borderRadius: '0.375rem',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          zIndex: 40,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontSize: '0.75rem',
+          color: PANEL_TEXT_COLOR,
+          background: PANEL_BG_COLOR,
+          opacity: 0.7,
+          padding: '0.25rem',
+          zIndex: 30,
+          pointerEvents: 'none',
         }}
       >
-        {isRearrangeMode ? 'Re-arrange Mode' : 'Navigate Mode'}
-      </button>
+        Double-click a Table or point in space to set and remove a fixed marker to rotate around
+      </div>
     </div>
   );
 }
