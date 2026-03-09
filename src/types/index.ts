@@ -14,6 +14,7 @@ export interface ParsedTable {
   columns: ParsedColumn[];
   note?: string;
   tableGroup?: string;
+  headerColor?: string;
 }
 
 export interface ParsedRef {
@@ -24,6 +25,12 @@ export interface ParsedRef {
   targetFieldNames: string[];
   sourceRelation?: string;
   targetRelation?: string;
+  color?: string;
+}
+
+export interface ParsedTableGroup {
+  name: string;
+  color?: string;
 }
 
 export interface ReferenceItem {
@@ -35,6 +42,7 @@ export interface ParsedSchema {
   tables: ParsedTable[];
   refs: ParsedRef[];
   projectName?: string;
+  tableGroups?: ParsedTableGroup[];
 }
 
 export interface TableGroupDescriptor {
@@ -56,6 +64,7 @@ export interface TableGroupBoundingBox {
   width: number;
   height: number;
   depth: number;
+  color?: string;
 }
 
 export interface LayoutNode {
@@ -106,4 +115,5 @@ export interface RelationshipLinkModel {
   targetFieldNames: string[];
   linkIndex: number;
   parallelCount: number;
+  color?: string;
 }

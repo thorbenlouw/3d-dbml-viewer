@@ -12,7 +12,6 @@ import {
   CARD_BODY_COLOR,
   CARD_COLUMN_GAP,
   CARD_EDGE_COLOR,
-  CARD_HEADER_COLOR,
   CARD_HEADER_HEIGHT,
   CARD_HORIZONTAL_PADDING,
   CARD_ROW_EVEN_COLOR,
@@ -36,6 +35,7 @@ import {
   STICKY_BORDER_GLOW_OPACITY,
   TITLE_SCALE_MAX,
 } from './constants';
+import { resolveTableHeaderColor } from './colorUtils';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
 
@@ -114,6 +114,10 @@ export default function TableCard({
   const { camera } = useThree();
 
   const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
+  const headerColor = useMemo(
+    () => resolveTableHeaderColor(node.table.headerColor),
+    [node.table.headerColor],
+  );
 
   const headerY = dimensions.height / 2 - CARD_HEADER_HEIGHT / 2;
   const bodyHeight = dimensions.height - CARD_HEADER_HEIGHT;
@@ -183,7 +187,7 @@ export default function TableCard({
         <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, dimensions.depth]} />
         <meshBasicMaterial
           ref={headerMaterialRef}
-          color={highlightedColumn === '__table__' ? COLUMN_HIGHLIGHT_COLOR : CARD_HEADER_COLOR}
+          color={highlightedColumn === '__table__' ? COLUMN_HIGHLIGHT_COLOR : headerColor}
           transparent
           opacity={OPACITY_FAR}
         />

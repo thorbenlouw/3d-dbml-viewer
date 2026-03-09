@@ -10,6 +10,7 @@ const __dirname = dirname(__filename);
 
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
 const withProjectDbml = readFileSync(resolve(__dirname, '../fixtures/with-project.dbml'), 'utf-8');
+const colorStylesDbml = readFileSync(resolve(__dirname, '../fixtures/color-styles.dbml'), 'utf-8');
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -215,6 +216,74 @@ describe('parseDatabaseSchema', () => {
       `;
       const schema = parseDatabaseSchema(dbml);
       expect(schema.projectName).toBeUndefined();
+    });
+  });
+
+  describe('color style extraction from color-styles.dbml fixture', () => {
+    it('extracts local table headerColor', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const users = schema.tables.find((t) => t.name === 'users');
+      expect(users?.headerColor).toBe('#3b82f6');
+    });
+
+    it('extracts another local table headerColor', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const comments = schema.tables.find((t) => t.name === 'comments');
+      expect(comments?.headerColor).toBe('#10b981');
+    });
+
+    it('keeps headerColor undefined for tables with no color', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const tags = schema.tables.find((t) => t.name === 'tags');
+      expect(tags?.headerColor).toBeUndefined();
+    });
+
+    it('extracts ref color', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const coloredRef = schema.refs.find((r) => r.color !== undefined);
+      expect(coloredRef?.color).toBe('#f59e0b');
+    });
+
+    it('keeps ref color undefined when not specified', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const uncoloredRef = schema.refs.find(
+        (r) => r.sourceId === 'posts' && r.targetId === 'users',
+      );
+      expect(uncoloredRef?.color).toBeUndefined();
+    });
+
+    it('extracts tablegroup color', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      const blogGroup = schema.tableGroups?.find((g) => g.name === 'blog');
+      expect(blogGroup?.color).toBe('#8b5cf6');
+    });
+
+    it('includes all table groups in tableGroups array', () => {
+      const schema = parseDatabaseSchema(colorStylesDbml);
+      expect(schema.tableGroups).toBeDefined();
+      expect(schema.tableGroups?.map((g) => g.name)).toContain('blog');
+    });
+  });
+
+  describe('headerColor precedence', () => {
+    it('uses table-local headerColor when set', () => {
+      const dbml = `
+        Table users [headercolor: #ff0000] {
+          id integer [pk]
+        }
+      `;
+      const schema = parseDatabaseSchema(dbml);
+      expect(schema.tables[0].headerColor).toBe('#ff0000');
+    });
+
+    it('returns undefined when no color is set', () => {
+      const dbml = `
+        Table users {
+          id integer [pk]
+        }
+      `;
+      const schema = parseDatabaseSchema(dbml);
+      expect(schema.tables[0].headerColor).toBeUndefined();
     });
   });
 });

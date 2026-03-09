@@ -193,6 +193,8 @@ export function computeGroupBoundaries(
 
     if (!isFinite(minX)) continue;
 
+    const groupColor = schema.tableGroups?.find((g) => g.name === groupName)?.color;
+
     boundaries.push({
       groupId: groupName,
       groupName,
@@ -202,6 +204,7 @@ export function computeGroupBoundaries(
       width: Math.max(maxX - minX + padding * 2, 1),
       height: Math.max(maxY - minY + padding * 2, 1),
       depth: Math.max(maxZ - minZ + padding * 2, 0.5),
+      color: groupColor,
     });
   }
 

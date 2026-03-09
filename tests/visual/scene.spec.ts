@@ -32,7 +32,7 @@ test('3D scene renders with canvas, Reset View button, and no errors', async ({ 
     expect(box!.height).toBeGreaterThan(0);
 
     await expect(resetBtn).toBeVisible();
-    await expect(resetBtn).toHaveText('Reset View');
+    await expect(resetBtn).toHaveText('Reset');
     await resetBtn.click();
   }
 

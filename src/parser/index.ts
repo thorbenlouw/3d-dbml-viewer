@@ -1,5 +1,5 @@
 import { Parser } from '@dbml/core';
-import type { ParsedColumn, ParsedRef, ParsedSchema } from '@/types';
+import type { ParsedColumn, ParsedRef, ParsedSchema, ParsedTableGroup } from '@/types';
 
 interface DbmlField {
   name: string;
@@ -12,12 +12,19 @@ interface DbmlField {
   };
 }
 
+interface DbmlTablePartial {
+  headerColor?: string;
+}
+
 interface DbmlTable {
   name: string;
   note?: string;
   fields: DbmlField[];
+  headerColor?: string;
+  partials?: DbmlTablePartial[];
   group?: {
     name?: unknown;
+    color?: string;
   } | null;
 }
 
@@ -29,11 +36,18 @@ interface DbmlRefEndpoint {
 
 interface DbmlRef {
   endpoints: [DbmlRefEndpoint, DbmlRefEndpoint];
+  color?: string;
+}
+
+interface DbmlTableGroup {
+  name: string;
+  color?: string;
 }
 
 interface DbmlSchema {
   tables: DbmlTable[];
   refs: DbmlRef[];
+  tableGroups?: DbmlTableGroup[];
 }
 
 interface DbmlDatabase {
@@ -93,6 +107,7 @@ function mapRefs(schemas: DbmlSchema[]): ParsedRef[] {
     schema.refs.map((ref, index) => {
       const source = ref.endpoints[0];
       const target = ref.endpoints[1];
+      const rawColor = ref.color?.trim();
       return {
         id: `${source.tableName}:${source.fieldNames.join(',')}->${target.tableName}:${target.fieldNames.join(',')}:${index}`,
         sourceId: source.tableName,
@@ -101,6 +116,7 @@ function mapRefs(schemas: DbmlSchema[]): ParsedRef[] {
         targetFieldNames: [...target.fieldNames],
         sourceRelation: source.relation,
         targetRelation: target.relation,
+        color: rawColor !== undefined && rawColor.length > 0 ? rawColor : undefined,
       };
     }),
   );
@@ -111,6 +127,35 @@ function getTableGroupName(table: DbmlTable): string | undefined {
   if (typeof rawName !== 'string') return undefined;
   const normalized = rawName.trim();
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function resolveTableHeaderColor(table: DbmlTable): string | undefined {
+  // Precedence: 1) table-local headerColor, 2) last partial with headerColor, 3) undefined
+  const localColor = table.headerColor?.trim();
+  if (localColor && localColor.length > 0) return localColor;
+
+  const partials = table.partials;
+  if (partials && partials.length > 0) {
+    for (let i = partials.length - 1; i >= 0; i--) {
+      const partialColor = partials[i].headerColor?.trim();
+      if (partialColor && partialColor.length > 0) return partialColor;
+    }
+  }
+
+  return undefined;
+}
+
+function extractTableGroups(schemas: DbmlSchema[]): ParsedTableGroup[] {
+  const seen = new Map<string, string | undefined>();
+  for (const schema of schemas) {
+    for (const group of schema.tableGroups ?? []) {
+      if (!seen.has(group.name)) {
+        const rawColor = group.color?.trim();
+        seen.set(group.name, rawColor && rawColor.length > 0 ? rawColor : undefined);
+      }
+    }
+  }
+  return Array.from(seen.entries()).map(([name, color]) => ({ name, color }));
 }
 
 export function parseDatabaseSchema(dbml: string): ParsedSchema {
@@ -134,15 +179,17 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
         columns: mapColumns(table, foreignKeys),
         note: rawTableNote !== undefined && rawTableNote.length > 0 ? rawTableNote : undefined,
         tableGroup: getTableGroupName(table),
+        headerColor: resolveTableHeaderColor(table),
       };
     }),
   );
 
   const refs = mapRefs(database.schemas);
+  const tableGroups = extractTableGroups(database.schemas);
 
   const rawProjectName = database.name?.trim();
   const projectName =
     rawProjectName !== undefined && rawProjectName.length > 0 ? rawProjectName : undefined;
 
-  return { tables, refs, projectName };
+  return { tables, refs, projectName, tableGroups };
 }

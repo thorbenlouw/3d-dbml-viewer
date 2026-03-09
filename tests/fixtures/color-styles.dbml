@@ -1,0 +1,39 @@
+// Fixture: DBML color style scenarios
+// Covers: local table headercolor, ref color, tablegroup color, fallback (no color)
+
+// Table with explicit local headercolor (hex)
+Table users [headercolor: #3b82f6] {
+  id integer [pk]
+  name varchar [not null]
+  email varchar [not null, unique]
+}
+
+// Table with no local headercolor
+Table posts {
+  id integer [pk]
+  user_id integer [ref: > users.id]
+  title varchar [not null]
+}
+
+// Table with another local headercolor
+Table comments [headercolor: #10b981] {
+  id integer [pk]
+  post_id integer [ref: > posts.id]
+  body text [not null]
+}
+
+// Table with no color (falls back to default)
+Table tags {
+  id integer [pk]
+  label varchar [not null]
+}
+
+// Ref with explicit color — color setting goes after the relationship definition
+Ref: posts.id < tags.id [color: #f59e0b]
+
+// TableGroup with explicit color
+TableGroup blog [color: #8b5cf6] {
+  users
+  posts
+  comments
+}

@@ -162,6 +162,7 @@ function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
         targetFieldNames: ref.targetFieldNames,
         linkIndex: index,
         parallelCount: refs.length,
+        color: ref.color,
       });
     });
   }
@@ -965,6 +966,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
               linkIndex={link.linkIndex}
               parallelCount={link.parallelCount}
               isHighlighted={shouldHighlightRelationship(hoverContext, link)}
+              color={link.color}
             />
           );
         })}

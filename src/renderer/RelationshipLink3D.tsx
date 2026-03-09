@@ -4,11 +4,11 @@ import * as THREE from 'three';
 import type { TableCardNode } from '@/types';
 import {
   LINK_HIGHLIGHT_COLOR,
-  LINK_COLOR,
   LINK_SEGMENTS,
   LINK_TUBE_RADIAL_SEGMENTS,
   LINK_TUBE_RADIUS,
 } from './constants';
+import { resolveLinkColor } from './colorUtils';
 import { buildRelationshipLinkRoute } from './linkRouting';
 import { computeRowSideAnchor } from './tableCardAnchors';
 
@@ -20,6 +20,7 @@ interface RelationshipLink3DProps {
   linkIndex: number;
   parallelCount: number;
   isHighlighted?: boolean;
+  color?: string;
 }
 
 function buildTubeGeometry(
@@ -53,7 +54,9 @@ export default function RelationshipLink3D({
   linkIndex,
   parallelCount,
   isHighlighted = false,
+  color,
 }: RelationshipLink3DProps): ReactElement {
+  const resolvedColor = resolveLinkColor(color);
   const meshRef = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
 
@@ -106,7 +109,7 @@ export default function RelationshipLink3D({
   return (
     <mesh ref={meshRef} geometry={initialGeometry}>
       <meshBasicMaterial
-        color={isHighlighted ? LINK_HIGHLIGHT_COLOR : LINK_COLOR}
+        color={isHighlighted ? LINK_HIGHLIGHT_COLOR : resolvedColor}
         transparent
         opacity={0.8}
       />

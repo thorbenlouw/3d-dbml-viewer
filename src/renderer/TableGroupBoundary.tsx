@@ -3,11 +3,10 @@ import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { TableGroupBoundingBox } from '@/types';
 import { SCENE_FONT_BOLD } from './constants';
+import { resolveGroupBoundaryColor } from './colorUtils';
 
-const BOUNDARY_COLOR = '#4a90d9';
 const BOUNDARY_FILL_OPACITY = 0.06;
 const BOUNDARY_EDGE_OPACITY = 0.28;
-const LABEL_COLOR = '#7bc8ff';
 const LABEL_SIZE = 0.22;
 
 interface TableGroupBoundaryProps {
@@ -15,7 +14,14 @@ interface TableGroupBoundaryProps {
 }
 
 export default function TableGroupBoundary({ boundary }: TableGroupBoundaryProps): ReactElement {
-  const { centerX, centerY, centerZ, width, height, depth, groupName } = boundary;
+  const { centerX, centerY, centerZ, width, height, depth, groupName, color } = boundary;
+  const resolvedColor = resolveGroupBoundaryColor(color);
+  const labelColor = useMemo(() => {
+    // Lighten the boundary color slightly for the label
+    const c = new THREE.Color(resolvedColor);
+    c.lerp(new THREE.Color('#ffffff'), 0.4);
+    return `#${c.getHexString()}`;
+  }, [resolvedColor]);
 
   const boxGeometry = useMemo(
     () => new THREE.BoxGeometry(width, height, depth),
@@ -36,7 +42,7 @@ export default function TableGroupBoundary({ boundary }: TableGroupBoundaryProps
       {/* Translucent fill — BackSide to avoid Z-fighting with table cards */}
       <mesh geometry={boxGeometry}>
         <meshBasicMaterial
-          color={BOUNDARY_COLOR}
+          color={resolvedColor}
           transparent
           opacity={BOUNDARY_FILL_OPACITY}
           side={THREE.BackSide}
@@ -46,14 +52,14 @@ export default function TableGroupBoundary({ boundary }: TableGroupBoundaryProps
 
       {/* Wireframe edges */}
       <lineSegments geometry={edgesGeometry}>
-        <lineBasicMaterial color={BOUNDARY_COLOR} transparent opacity={BOUNDARY_EDGE_OPACITY} />
+        <lineBasicMaterial color={resolvedColor} transparent opacity={BOUNDARY_EDGE_OPACITY} />
       </lineSegments>
 
       {/* Group name label positioned above the box */}
       <Text
         position={[0, height * 0.5 + LABEL_SIZE * 0.8, depth * 0.5]}
         fontSize={LABEL_SIZE}
-        color={LABEL_COLOR}
+        color={labelColor}
         font={SCENE_FONT_BOLD}
         anchorX="center"
         anchorY="bottom"
