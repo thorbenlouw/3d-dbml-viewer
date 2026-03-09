@@ -11,7 +11,7 @@
 //  HUBS
 // ─────────────────────────────────────────────
 
-Table hub_customer {
+Table hub_customer [headercolor: #c0440c] {
   hk_customer char(32) [pk, note: 'MD5 hash of customer_bk']
   customer_bk varchar(255) [not null, unique, note: 'National ID or assigned customer number']
   load_date timestamp [not null]
@@ -20,7 +20,7 @@ Table hub_customer {
   note: 'Hub: identifies a unique insurance customer (policyholder or named insured).'
 }
 
-Table hub_policy {
+Table hub_policy [headercolor: #c0440c] {
   hk_policy char(32) [pk, note: 'MD5 hash of policy_bk']
   policy_bk varchar(50) [not null, unique, note: 'Policy number assigned at underwriting']
   load_date timestamp [not null]
@@ -29,7 +29,7 @@ Table hub_policy {
   note: 'Hub: uniquely identifies an insurance policy contract.'
 }
 
-Table hub_claim {
+Table hub_claim [headercolor: #c0440c] {
   hk_claim char(32) [pk, note: 'MD5 hash of claim_bk']
   claim_bk varchar(50) [not null, unique, note: 'Claim reference number assigned at first notice of loss']
   load_date timestamp [not null]
@@ -38,7 +38,7 @@ Table hub_claim {
   note: 'Hub: uniquely identifies a loss event claim made against a policy.'
 }
 
-Table hub_vehicle {
+Table hub_vehicle [headercolor: #c0440c] {
   hk_vehicle char(32) [pk, note: 'MD5 hash of vin']
   vin varchar(17) [not null, unique, note: 'Vehicle Identification Number — the natural business key']
   load_date timestamp [not null]
@@ -47,7 +47,7 @@ Table hub_vehicle {
   note: 'Hub: uniquely identifies a motor vehicle by its VIN.'
 }
 
-Table hub_property {
+Table hub_property [headercolor: #c0440c] {
   hk_property char(32) [pk, note: 'MD5 hash of property_bk']
   property_bk varchar(255) [not null, unique, note: 'Cadastral reference or normalised postal address']
   load_date timestamp [not null]
@@ -56,7 +56,7 @@ Table hub_property {
   note: 'Hub: uniquely identifies an insured property (home, commercial premises).'
 }
 
-Table hub_agent {
+Table hub_agent [headercolor: #c0440c] {
   hk_agent char(32) [pk, note: 'MD5 hash of agent_bk']
   agent_bk varchar(50) [not null, unique, note: 'Regulatory licence number of the broker or tied agent']
   load_date timestamp [not null]
@@ -65,7 +65,7 @@ Table hub_agent {
   note: 'Hub: uniquely identifies an insurance agent or broker.'
 }
 
-Table hub_coverage_type {
+Table hub_coverage_type [headercolor: #c0440c] {
   hk_coverage_type char(32) [pk, note: 'MD5 hash of coverage_code']
   coverage_code varchar(20) [not null, unique, note: 'Internal code for coverage type (e.g. TPL, COMP, FIRE)']
   load_date timestamp [not null]
@@ -78,7 +78,7 @@ Table hub_coverage_type {
 //  LINKS
 // ─────────────────────────────────────────────
 
-Table lnk_customer_policy {
+Table lnk_customer_policy [headercolor: #7a2c4a] {
   hk_customer_policy char(32) [pk, note: 'MD5 hash of hk_customer + hk_policy']
   hk_customer char(32) [not null]
   hk_policy char(32) [not null]
@@ -88,7 +88,7 @@ Table lnk_customer_policy {
   note: 'Link: associates a customer (named insured) with a policy.'
 }
 
-Table lnk_policy_coverage {
+Table lnk_policy_coverage [headercolor: #7a2c4a] {
   hk_policy_coverage char(32) [pk, note: 'MD5 hash of hk_policy + hk_coverage_type']
   hk_policy char(32) [not null]
   hk_coverage_type char(32) [not null]
@@ -98,7 +98,7 @@ Table lnk_policy_coverage {
   note: 'Link: records which coverage types are included on a policy.'
 }
 
-Table lnk_policy_vehicle {
+Table lnk_policy_vehicle [headercolor: #7a2c4a] {
   hk_policy_vehicle char(32) [pk, note: 'MD5 hash of hk_policy + hk_vehicle']
   hk_policy char(32) [not null]
   hk_vehicle char(32) [not null]
@@ -108,7 +108,7 @@ Table lnk_policy_vehicle {
   note: 'Link: associates a vehicle with the auto policy that schedules it.'
 }
 
-Table lnk_policy_property {
+Table lnk_policy_property [headercolor: #7a2c4a] {
   hk_policy_property char(32) [pk, note: 'MD5 hash of hk_policy + hk_property']
   hk_policy char(32) [not null]
   hk_property char(32) [not null]
@@ -118,7 +118,7 @@ Table lnk_policy_property {
   note: 'Link: associates a property with the home/commercial policy that covers it.'
 }
 
-Table lnk_claim_policy {
+Table lnk_claim_policy [headercolor: #7a2c4a] {
   hk_claim_policy char(32) [pk, note: 'MD5 hash of hk_claim + hk_policy']
   hk_claim char(32) [not null]
   hk_policy char(32) [not null]
@@ -128,7 +128,7 @@ Table lnk_claim_policy {
   note: 'Link: connects a claim to the policy against which it was made.'
 }
 
-Table lnk_claim_vehicle {
+Table lnk_claim_vehicle [headercolor: #7a2c4a] {
   hk_claim_vehicle char(32) [pk, note: 'MD5 hash of hk_claim + hk_vehicle']
   hk_claim char(32) [not null]
   hk_vehicle char(32) [not null]
@@ -138,7 +138,7 @@ Table lnk_claim_vehicle {
   note: 'Link: identifies the vehicle involved in an auto claim.'
 }
 
-Table lnk_claim_property {
+Table lnk_claim_property [headercolor: #7a2c4a] {
   hk_claim_property char(32) [pk, note: 'MD5 hash of hk_claim + hk_property']
   hk_claim char(32) [not null]
   hk_property char(32) [not null]
@@ -148,7 +148,7 @@ Table lnk_claim_property {
   note: 'Link: identifies the property involved in a property claim.'
 }
 
-Table lnk_policy_agent {
+Table lnk_policy_agent [headercolor: #7a2c4a] {
   hk_policy_agent char(32) [pk, note: 'MD5 hash of hk_policy + hk_agent']
   hk_policy char(32) [not null]
   hk_agent char(32) [not null]
@@ -162,7 +162,7 @@ Table lnk_policy_agent {
 //  SATELLITES — Customers
 // ─────────────────────────────────────────────
 
-Table sat_customer_personal {
+Table sat_customer_personal [headercolor: #5a7a2e] {
   hk_customer char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -182,7 +182,7 @@ Table sat_customer_personal {
   note: 'Satellite: type-2 personal demographics for a customer.'
 }
 
-Table sat_customer_contact {
+Table sat_customer_contact [headercolor: #5a7a2e] {
   hk_customer char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -209,7 +209,7 @@ Table sat_customer_contact {
 //  SATELLITES — Policies
 // ─────────────────────────────────────────────
 
-Table sat_policy_details {
+Table sat_policy_details [headercolor: #5a7a2e] {
   hk_policy char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -229,7 +229,7 @@ Table sat_policy_details {
   note: 'Satellite: type-2 core attributes of an insurance policy.'
 }
 
-Table sat_policy_premium {
+Table sat_policy_premium [headercolor: #5a7a2e] {
   hk_policy char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -253,7 +253,7 @@ Table sat_policy_premium {
 //  SATELLITES — Claims
 // ─────────────────────────────────────────────
 
-Table sat_claim_event {
+Table sat_claim_event [headercolor: #5a7a2e] {
   hk_claim char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -273,7 +273,7 @@ Table sat_claim_event {
   note: 'Satellite: type-2 details of the loss event that triggered the claim.'
 }
 
-Table sat_claim_status {
+Table sat_claim_status [headercolor: #5a7a2e] {
   hk_claim char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -297,7 +297,7 @@ Table sat_claim_status {
 //  SATELLITES — Vehicles
 // ─────────────────────────────────────────────
 
-Table sat_vehicle_attributes {
+Table sat_vehicle_attributes [headercolor: #5a7a2e] {
   hk_vehicle char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -319,7 +319,7 @@ Table sat_vehicle_attributes {
   note: 'Satellite: type-2 physical attributes of an insured vehicle.'
 }
 
-Table sat_vehicle_registration {
+Table sat_vehicle_registration [headercolor: #5a7a2e] {
   hk_vehicle char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -341,7 +341,7 @@ Table sat_vehicle_registration {
 //  SATELLITES — Properties
 // ─────────────────────────────────────────────
 
-Table sat_property_details {
+Table sat_property_details [headercolor: #5a7a2e] {
   hk_property char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -366,7 +366,7 @@ Table sat_property_details {
   note: 'Satellite: type-2 physical and location attributes of an insured property.'
 }
 
-Table sat_property_valuation {
+Table sat_property_valuation [headercolor: #5a7a2e] {
   hk_property char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -389,7 +389,7 @@ Table sat_property_valuation {
 //  SATELLITES — Agents
 // ─────────────────────────────────────────────
 
-Table sat_agent_details {
+Table sat_agent_details [headercolor: #5a7a2e] {
   hk_agent char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -415,7 +415,7 @@ Table sat_agent_details {
 //  SATELLITES — Coverage types
 // ─────────────────────────────────────────────
 
-Table sat_coverage_type_details {
+Table sat_coverage_type_details [headercolor: #5a7a2e] {
   hk_coverage_type char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
@@ -438,7 +438,7 @@ Table sat_coverage_type_details {
 //  SATELLITES — Link effectivity (optional DV2 pattern)
 // ─────────────────────────────────────────────
 
-Table sat_customer_policy_effectivity {
+Table sat_customer_policy_effectivity [headercolor: #5a7a2e] {
   hk_customer_policy char(32) [not null]
   load_date timestamp [not null]
   load_end_date timestamp [note: 'NULL = current record']
