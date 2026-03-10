@@ -12,6 +12,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type {
+  FieldDetailMode,
   HoverContext,
   ParsedSchema,
   RelationshipLinkModel,
@@ -39,6 +40,7 @@ import {
 } from './constants';
 import TableCard from './TableCard';
 import RelationshipLink3D from './RelationshipLink3D';
+import { buildReferencedFieldLookup, getVisibleColumns } from './fieldDetailMode';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { useForceSimulation } from '@/layout/useForceSimulation';
 import NavigationPanel from './NavigationPanel';
@@ -48,7 +50,6 @@ import {
   shouldHighlightRelationship,
   type ReferencesForContext,
 } from './hoverContext';
-import LoadFileButton from '@/ui/LoadFileButton';
 import FocusMarker from './FocusMarker';
 import { resolveMarkerPlacementPosition } from './interaction';
 import { activateFocusMarker, activateStickyFocus, toggleStickyTable } from './focusMode';
@@ -58,7 +59,8 @@ import ProjectNotesCard from './ProjectNotesCard';
 
 interface SceneProps {
   schema: ParsedSchema;
-  onLoadFile: (text: string) => void;
+  sourceSchema?: ParsedSchema;
+  fieldDetailMode?: FieldDetailMode;
 }
 
 interface CameraTweenState {
@@ -94,10 +96,14 @@ interface StickyFocusOptions {
   linkModels: RelationshipLinkModel[];
   camera: THREE.Camera;
   fovDeg: number;
+  fieldDetailMode: FieldDetailMode;
+  referencedFieldLookup: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 interface DraggableTableCardProps {
   node: TableCardNode;
+  fieldDetailMode: FieldDetailMode;
+  referencedFieldNames?: ReadonlySet<string>;
   isSticky: boolean;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
@@ -171,12 +177,23 @@ function buildLinkModels(schema: ParsedSchema): RelationshipLinkModel[] {
   return models;
 }
 
+function getVisibleColumnsForCard(
+  tableId: string,
+  table: TableCardNode['table'],
+  fieldDetailMode: FieldDetailMode,
+  referencedFieldLookup: ReadonlyMap<string, ReadonlySet<string>>,
+) {
+  return getVisibleColumns(table, fieldDetailMode, referencedFieldLookup.get(tableId));
+}
+
 function buildStickyFocusFrame({
   tableId,
   cardById,
   linkModels,
   camera,
   fovDeg,
+  fieldDetailMode,
+  referencedFieldLookup,
 }: StickyFocusOptions): CameraFrame | null {
   const stickyNode = cardById.get(tableId);
   if (!stickyNode) return null;
@@ -229,7 +246,10 @@ function buildStickyFocusFrame({
     const nodeCenter = new THREE.Vector3(node.x, node.y, node.z);
     const toNode = nodeCenter.sub(target);
     const projected = toNode.addScaledVector(offsetDirection, -toNode.dot(offsetDirection));
-    const dimensions = estimateTableCardDimensions(node.table);
+    const dimensions = estimateTableCardDimensions(
+      node.table,
+      getVisibleColumnsForCard(node.id, node.table, fieldDetailMode, referencedFieldLookup),
+    );
     const cardRadius =
       Math.sqrt(dimensions.width * dimensions.width + dimensions.height * dimensions.height) * 0.5;
     fitRadius = Math.max(fitRadius, projected.length() + cardRadius);
@@ -534,6 +554,8 @@ function SceneInteractionLayer({
 
 function DraggableTableCard({
   node,
+  fieldDetailMode,
+  referencedFieldNames,
   isSticky,
   highlightedColumn,
   onTableHoverChange,
@@ -543,6 +565,8 @@ function DraggableTableCard({
   return (
     <TableCard
       node={node}
+      fieldDetailMode={fieldDetailMode}
+      referencedFieldNames={referencedFieldNames}
       highlightedColumn={highlightedColumn}
       onTableHoverChange={onTableHoverChange}
       onColumnHoverChange={onColumnHoverChange}
@@ -552,7 +576,11 @@ function DraggableTableCard({
   );
 }
 
-export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement {
+export default function Scene({
+  schema,
+  sourceSchema = schema,
+  fieldDetailMode = 'full',
+}: SceneProps): ReactElement {
   const hasWebGL = useMemo(() => {
     const canvas = document.createElement('canvas');
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
@@ -585,6 +613,10 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     if (!focusMarkerState) return null;
     return focusMarkerState.schema === schema ? focusMarkerState.position : null;
   }, [focusMarkerState, schema]);
+  const referencedFieldLookup = useMemo(
+    () => buildReferencedFieldLookup(sourceSchema),
+    [sourceSchema],
+  );
 
   const handleSettled = useCallback(
     (settledNodes: SimulationNode[]) => {
@@ -593,7 +625,10 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
       for (const node of settledNodes) {
         const table = tableMap.get(node.id);
         if (!table) continue;
-        const dimensions = estimateTableCardDimensions(table);
+        const dimensions = estimateTableCardDimensions(
+          table,
+          getVisibleColumns(table, fieldDetailMode, referencedFieldLookup.get(table.id)),
+        );
         points.push(
           new THREE.Vector3(
             node.x - dimensions.width * 0.5,
@@ -630,7 +665,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
         shouldTweenToSettledRef.current = true;
       }
     },
-    [schema.tables],
+    [fieldDetailMode, referencedFieldLookup, schema.tables],
   );
 
   const { nodes: simNodes } = useForceSimulation(schema, {
@@ -646,10 +681,16 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
   const cardDimensionMap = useMemo(() => {
     const map = new Map<string, { width: number; height: number; depth: number }>();
     for (const cardNode of cardNodes) {
-      map.set(cardNode.id, estimateTableCardDimensions(cardNode.table));
+      map.set(
+        cardNode.id,
+        estimateTableCardDimensions(
+          cardNode.table,
+          getVisibleColumnsForCard(cardNode.id, cardNode.table, fieldDetailMode, referencedFieldLookup),
+        ),
+      );
     }
     return map;
-  }, [cardNodes]);
+  }, [cardNodes, fieldDetailMode, referencedFieldLookup]);
 
   const groupBoundaries = useMemo(
     () => computeGroupBoundaries(schema, cardNodes, cardDimensionMap),
@@ -670,7 +711,10 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     const points: THREE.Vector3[] = [];
 
     for (const cardNode of cardNodes) {
-      const dimensions = estimateTableCardDimensions(cardNode.table);
+      const dimensions = estimateTableCardDimensions(
+        cardNode.table,
+        getVisibleColumnsForCard(cardNode.id, cardNode.table, fieldDetailMode, referencedFieldLookup),
+      );
       points.push(
         new THREE.Vector3(
           cardNode.x - dimensions.width * 0.5,
@@ -718,7 +762,7 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
     }
 
     return points;
-  }, [cardNodes, linkModels, cardById, groupBoundaries]);
+  }, [cardNodes, linkModels, cardById, groupBoundaries, fieldDetailMode, referencedFieldLookup]);
 
   const tweenStateRef = useRef<CameraTweenState>({
     active: false,
@@ -828,12 +872,14 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
         linkModels,
         camera: controls.object,
         fovDeg: 60,
+        fieldDetailMode,
+        referencedFieldLookup,
       });
       if (!frame) return;
 
       pendingTweenRef.current = frame;
     },
-    [cardById, linkModels],
+    [cardById, fieldDetailMode, linkModels, referencedFieldLookup],
   );
 
   const handleHeaderDoubleClick = useCallback(
@@ -974,6 +1020,9 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
               parallelCount={link.parallelCount}
               isHighlighted={shouldHighlightRelationship(hoverContext, link)}
               color={link.color}
+              fieldDetailMode={fieldDetailMode}
+              sourceReferencedFieldNames={referencedFieldLookup.get(link.sourceId)}
+              targetReferencedFieldNames={referencedFieldLookup.get(link.targetId)}
             />
           );
         })}
@@ -991,6 +1040,8 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
             <DraggableTableCard
               key={node.id}
               node={node}
+              fieldDetailMode={fieldDetailMode}
+              referencedFieldNames={referencedFieldLookup.get(node.id)}
               isSticky={node.id === effectiveStickyTableId}
               highlightedColumn={highlightedColumn}
               onTableHoverChange={setHoverContext}
@@ -1016,8 +1067,6 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           projectNote={schema.projectNote}
         />
       )}
-
-      <LoadFileButton onLoad={onLoadFile} />
       <div
         style={{
           position: 'fixed',

@@ -1,4 +1,4 @@
-import type { ParsedTable } from '@/types';
+import type { ParsedColumn, ParsedTable } from '@/types';
 import {
   BADGE_GAP,
   BADGE_WIDTH,
@@ -26,13 +26,16 @@ function estimateTextWidth(text: string): number {
   return text.length * 0.065;
 }
 
-export function estimateTableCardDimensions(table: ParsedTable): TableCardDimensions {
+export function estimateTableCardDimensions(
+  table: ParsedTable,
+  visibleColumns: readonly ParsedColumn[] = table.columns,
+): TableCardDimensions {
   const maxNameWidth = Math.max(
-    ...table.columns.map((column) => estimateTextWidth(column.name)),
+    ...visibleColumns.map((column) => estimateTextWidth(column.name)),
     0,
   );
   const maxTypeWidth = Math.max(
-    ...table.columns.map((column) => estimateTextWidth(column.type)),
+    ...visibleColumns.map((column) => estimateTextWidth(column.type)),
     0,
   );
   const badgeWidth = BADGE_WIDTH * 4 + BADGE_GAP * 3;
@@ -44,8 +47,9 @@ export function estimateTableCardDimensions(table: ParsedTable): TableCardDimens
     CARD_HORIZONTAL_PADDING * 2;
 
   const width = clamp(innerWidth, CARD_MIN_WIDTH, CARD_MAX_WIDTH);
-  const rowCount = Math.max(1, table.columns.length);
-  const bodyHeight = rowCount * CARD_ROW_HEIGHT + CARD_VERTICAL_PADDING * 2;
+  const rowCount = visibleColumns.length;
+  const bodyHeight =
+    rowCount === 0 ? 0 : rowCount * CARD_ROW_HEIGHT + CARD_VERTICAL_PADDING * 2;
 
   return {
     width,

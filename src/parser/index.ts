@@ -1,5 +1,13 @@
 import { Parser } from '@dbml/core';
-import type { ParsedColumn, ParsedRef, ParsedSchema, ParsedTableGroup } from '@/types';
+import type {
+  FilterState,
+  ParsedColumn,
+  ParsedRef,
+  ParsedSchema,
+  ParsedTableGroup,
+} from '@/types';
+
+export { applyFilters } from './applyFilters';
 
 interface DbmlField {
   name: string;
@@ -64,6 +72,24 @@ export class ParseError extends Error {
     super(message);
     this.name = 'ParseError';
   }
+}
+
+export function defaultFilterState(schema: ParsedSchema): FilterState {
+  return {
+    fieldDetailMode: schema.tables.length > 30 ? 'table-only' : 'full',
+    visibleTableIds: new Set(schema.tables.map((table) => table.id)),
+  };
+}
+
+export function isFilterActive(filterState: FilterState, defaultState: FilterState): boolean {
+  if (filterState.fieldDetailMode !== defaultState.fieldDetailMode) return true;
+  if (filterState.visibleTableIds.size !== defaultState.visibleTableIds.size) return true;
+
+  for (const tableId of filterState.visibleTableIds) {
+    if (!defaultState.visibleTableIds.has(tableId)) return true;
+  }
+
+  return false;
 }
 
 function buildForeignKeyMap(schemas: DbmlSchema[]): Map<string, Set<string>> {

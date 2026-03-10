@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { TableCardNode } from '@/types';
+import type { FieldDetailMode, TableCardNode } from '@/types';
 import {
   LINK_HIGHLIGHT_COLOR,
   LINK_SEGMENTS,
@@ -21,6 +21,9 @@ interface RelationshipLink3DProps {
   parallelCount: number;
   isHighlighted?: boolean;
   color?: string;
+  fieldDetailMode: FieldDetailMode;
+  sourceReferencedFieldNames?: ReadonlySet<string>;
+  targetReferencedFieldNames?: ReadonlySet<string>;
 }
 
 function buildTubeGeometry(
@@ -31,9 +34,26 @@ function buildTubeGeometry(
   cameraQuaternion: THREE.Quaternion,
   linkIndex: number,
   parallelCount: number,
+  fieldDetailMode: FieldDetailMode,
+  sourceReferencedFieldNames?: ReadonlySet<string>,
+  targetReferencedFieldNames?: ReadonlySet<string>,
 ): THREE.TubeGeometry {
-  const source = computeRowSideAnchor(sourceNode, targetNode, sourceFieldName, cameraQuaternion);
-  const target = computeRowSideAnchor(targetNode, sourceNode, targetFieldName, cameraQuaternion);
+  const source = computeRowSideAnchor(
+    sourceNode,
+    targetNode,
+    sourceFieldName,
+    cameraQuaternion,
+    fieldDetailMode,
+    sourceReferencedFieldNames,
+  );
+  const target = computeRowSideAnchor(
+    targetNode,
+    sourceNode,
+    targetFieldName,
+    cameraQuaternion,
+    fieldDetailMode,
+    targetReferencedFieldNames,
+  );
 
   const route = buildRelationshipLinkRoute({
     source,
@@ -55,6 +75,9 @@ export default function RelationshipLink3D({
   parallelCount,
   isHighlighted = false,
   color,
+  fieldDetailMode,
+  sourceReferencedFieldNames,
+  targetReferencedFieldNames,
 }: RelationshipLink3DProps): ReactElement {
   const resolvedColor = resolveLinkColor(color);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -69,6 +92,9 @@ export default function RelationshipLink3D({
       camera.quaternion,
       linkIndex,
       parallelCount,
+      fieldDetailMode,
+      sourceReferencedFieldNames,
+      targetReferencedFieldNames,
     );
   }, [
     sourceNode,
@@ -78,6 +104,9 @@ export default function RelationshipLink3D({
     camera.quaternion,
     linkIndex,
     parallelCount,
+    fieldDetailMode,
+    sourceReferencedFieldNames,
+    targetReferencedFieldNames,
   ]);
 
   useEffect(() => {
@@ -99,6 +128,9 @@ export default function RelationshipLink3D({
       camera.quaternion,
       linkIndex,
       parallelCount,
+      fieldDetailMode,
+      sourceReferencedFieldNames,
+      targetReferencedFieldNames,
     );
 
     const previousGeometry = mesh.geometry;

@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { useEffect, useMemo, useRef, type ReactElement } from 'react';
 import * as THREE from 'three';
-import type { HoverContext, ParsedColumn, TableCardNode } from '@/types';
+import type { FieldDetailMode, HoverContext, ParsedColumn, TableCardNode } from '@/types';
 import {
   BADGE_BG_COLOR,
   BADGE_GAP,
@@ -36,11 +36,14 @@ import {
   TITLE_SCALE_MAX,
 } from './constants';
 import { resolveTableHeaderColor } from './colorUtils';
+import { getVisibleColumns } from './fieldDetailMode';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
 
 interface TableCardProps {
   node: TableCardNode;
+  fieldDetailMode: FieldDetailMode;
+  referencedFieldNames?: ReadonlySet<string>;
   isSticky?: boolean;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
@@ -97,6 +100,8 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
 
 export default function TableCard({
   node,
+  fieldDetailMode,
+  referencedFieldNames,
   isSticky = false,
   highlightedColumn,
   onTableHoverChange,
@@ -113,7 +118,14 @@ export default function TableCard({
   const titleScaleGroupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
-  const dimensions = useMemo(() => estimateTableCardDimensions(node.table), [node.table]);
+  const visibleColumns = useMemo(
+    () => getVisibleColumns(node.table, fieldDetailMode, referencedFieldNames),
+    [fieldDetailMode, node.table, referencedFieldNames],
+  );
+  const dimensions = useMemo(
+    () => estimateTableCardDimensions(node.table, visibleColumns),
+    [node.table, visibleColumns],
+  );
   const headerColor = useMemo(
     () => resolveTableHeaderColor(node.table.headerColor),
     [node.table.headerColor],
@@ -133,7 +145,8 @@ export default function TableCard({
 
   useEffect(() => {
     if (groupRef.current) {
-      groupRef.current.userData[SCENE_INTERACTION_ROLE] = SCENE_ROLE_TABLE_CARD;
+      const userData = (groupRef.current.userData ??= {});
+      userData[SCENE_INTERACTION_ROLE] = SCENE_ROLE_TABLE_CARD;
     }
     if (tableHitMaterialRef.current) tableHitMaterialRef.current.depthWrite = false;
     if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
@@ -150,7 +163,7 @@ export default function TableCard({
   }, [cardGeometry, edgesGeometry]);
 
   useFrame(() => {
-    if (!groupRef.current || !headerMaterialRef.current || !bodyMaterialRef.current) return;
+    if (!groupRef.current || !headerMaterialRef.current) return;
 
     groupRef.current.quaternion.copy(camera.quaternion);
 
@@ -159,7 +172,9 @@ export default function TableCard({
     const t = Math.max(0, Math.min(1, (DISTANCE_FAR - dist) / (DISTANCE_FAR - DISTANCE_NEAR)));
     const opacity = OPACITY_FAR + t * (OPACITY_NEAR - OPACITY_FAR);
     headerMaterialRef.current.opacity = opacity;
-    bodyMaterialRef.current.opacity = opacity;
+    if (bodyMaterialRef.current) {
+      bodyMaterialRef.current.opacity = opacity;
+    }
 
     if (titleScaleGroupRef.current) {
       const titleT = Math.max(
@@ -173,15 +188,17 @@ export default function TableCard({
 
   return (
     <group ref={groupRef} position={[node.x, node.y, node.z]}>
-      <mesh position={[0, bodyY, 0]}>
-        <boxGeometry args={[dimensions.width, bodyHeight, dimensions.depth]} />
-        <meshBasicMaterial
-          ref={bodyMaterialRef}
-          color={CARD_BODY_COLOR}
-          transparent
-          opacity={OPACITY_FAR}
-        />
-      </mesh>
+      {bodyHeight > 0 && (
+        <mesh position={[0, bodyY, 0]}>
+          <boxGeometry args={[dimensions.width, bodyHeight, dimensions.depth]} />
+          <meshBasicMaterial
+            ref={bodyMaterialRef}
+            color={CARD_BODY_COLOR}
+            transparent
+            opacity={OPACITY_FAR}
+          />
+        </mesh>
+      )}
 
       <mesh position={[0, headerY, 0.001]}>
         <boxGeometry args={[dimensions.width, CARD_HEADER_HEIGHT, dimensions.depth]} />
@@ -277,7 +294,7 @@ export default function TableCard({
         </group>
       )}
 
-      {node.table.columns.map((column, index) => {
+      {visibleColumns.map((column, index) => {
         const rowTop =
           dimensions.height / 2 -
           CARD_HEADER_HEIGHT -
