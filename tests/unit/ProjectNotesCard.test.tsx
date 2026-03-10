@@ -106,6 +106,17 @@ describe('ProjectNotesCard', () => {
     unmount();
   });
 
+  it('renders GFM table rows from markdown table syntax', () => {
+    const tableNote = `| Column | Type |\n| --- | --- |\n| id | integer |\n| name | varchar |`;
+    const { unmount } = render(
+      <ProjectNotesCard projectName="MyProject" projectNote={tableNote} />,
+    );
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('id')).toBeInTheDocument();
+    expect(screen.getByText('varchar')).toBeInTheDocument();
+    unmount();
+  });
+
   it('renders the Project Notes label above the markdown', () => {
     const { unmount } = render(
       <ProjectNotesCard projectName="MyProject" projectNote={BASIC_NOTE} />,

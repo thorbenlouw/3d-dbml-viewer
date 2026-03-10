@@ -1,6 +1,7 @@
 import { useState, useMemo, type ReactElement } from 'react';
 import Markdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import {
   PANEL_BG_COLOR,
   PANEL_BORDER_COLOR,
@@ -13,8 +14,9 @@ export interface ProjectNotesCardProps {
   projectNote: string;
 }
 
-// Cast avoids `as const` readonly/mutable mismatch with the Markdown rehypePlugins prop
-const SAFE_REHYPE_PLUGINS = [rehypeSanitize] as Parameters<typeof Markdown>[0]['rehypePlugins'];
+// Casts avoid `as const` readonly/mutable mismatch with the Markdown plugin props
+const REMARK_PLUGINS = [remarkGfm] as Parameters<typeof Markdown>[0]['remarkPlugins'];
+const REHYPE_PLUGINS = [rehypeSanitize] as Parameters<typeof Markdown>[0]['rehypePlugins'];
 
 export default function ProjectNotesCard({
   projectName,
@@ -24,7 +26,7 @@ export default function ProjectNotesCard({
 
   const markdownElement = useMemo(
     () => (
-      <Markdown rehypePlugins={SAFE_REHYPE_PLUGINS}>{projectNote}</Markdown>
+      <Markdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>{projectNote}</Markdown>
     ),
     [projectNote],
   );
