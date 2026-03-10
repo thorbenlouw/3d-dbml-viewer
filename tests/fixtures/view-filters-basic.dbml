@@ -1,0 +1,27 @@
+Project ViewFiltersBasic {
+  Note: 'Fixture for view filter integration tests'
+}
+
+Table users {
+  id int [pk]
+  email varchar
+  display_name varchar
+}
+
+Table posts {
+  id int [pk]
+  author_id int [not null]
+  title varchar
+  body text
+}
+
+Table comments {
+  id int [pk]
+  post_id int [not null]
+  commenter_id int [not null]
+  body text
+}
+
+Ref: posts.author_id > users.id
+Ref: comments.post_id > posts.id
+Ref: comments.commenter_id > users.id

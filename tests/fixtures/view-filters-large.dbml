@@ -1,0 +1,127 @@
+Project ViewFiltersLarge {
+  Note: 'Fixture with more than thirty tables so the default mode becomes table-only'
+}
+
+Table table_01 {
+  id int [pk]
+}
+
+Table table_02 {
+  id int [pk]
+}
+
+Table table_03 {
+  id int [pk]
+}
+
+Table table_04 {
+  id int [pk]
+}
+
+Table table_05 {
+  id int [pk]
+}
+
+Table table_06 {
+  id int [pk]
+}
+
+Table table_07 {
+  id int [pk]
+}
+
+Table table_08 {
+  id int [pk]
+}
+
+Table table_09 {
+  id int [pk]
+}
+
+Table table_10 {
+  id int [pk]
+}
+
+Table table_11 {
+  id int [pk]
+}
+
+Table table_12 {
+  id int [pk]
+}
+
+Table table_13 {
+  id int [pk]
+}
+
+Table table_14 {
+  id int [pk]
+}
+
+Table table_15 {
+  id int [pk]
+}
+
+Table table_16 {
+  id int [pk]
+}
+
+Table table_17 {
+  id int [pk]
+}
+
+Table table_18 {
+  id int [pk]
+}
+
+Table table_19 {
+  id int [pk]
+}
+
+Table table_20 {
+  id int [pk]
+}
+
+Table table_21 {
+  id int [pk]
+}
+
+Table table_22 {
+  id int [pk]
+}
+
+Table table_23 {
+  id int [pk]
+}
+
+Table table_24 {
+  id int [pk]
+}
+
+Table table_25 {
+  id int [pk]
+}
+
+Table table_26 {
+  id int [pk]
+}
+
+Table table_27 {
+  id int [pk]
+}
+
+Table table_28 {
+  id int [pk]
+}
+
+Table table_29 {
+  id int [pk]
+}
+
+Table table_30 {
+  id int [pk]
+}
+
+Table table_31 {
+  id int [pk]
+}
