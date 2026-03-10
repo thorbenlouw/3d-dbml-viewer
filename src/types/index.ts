@@ -118,3 +118,10 @@ export interface RelationshipLinkModel {
   parallelCount: number;
   color?: string;
 }
+
+export type FieldDetailMode = 'full' | 'ref-fields-only' | 'table-only';
+
+export interface FilterState {
+  fieldDetailMode: FieldDetailMode;
+  visibleTableIds: Set<string>;
+}
