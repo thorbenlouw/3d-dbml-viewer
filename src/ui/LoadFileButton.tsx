@@ -42,9 +42,6 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
         onClick={handleButtonClick}
         aria-label="Load a DBML file from disk"
         style={{
-          position: 'fixed',
-          bottom: '2.5rem',
-          left: '1rem',
           backgroundColor: '#1C3552',
           color: '#ffffff',
           fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
@@ -54,7 +51,6 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
           cursor: 'pointer',
           fontSize: '0.875rem',
           fontWeight: 500,
-          zIndex: 40,
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#274565';
