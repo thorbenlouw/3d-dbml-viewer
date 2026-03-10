@@ -916,7 +916,14 @@ export default function Scene({
 
   if (hasWebGL === false) {
     return (
-      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <div
+        style={{ width: '100%', height: '100%', position: 'relative' }}
+        data-testid="scene-root"
+        data-focus-mode={focusMode}
+        data-field-detail-mode={fieldDetailMode}
+        data-table-count={schema.tables.length}
+        data-ref-count={schema.refs.length}
+      >
         <div
           role="status"
           aria-live="polite"
@@ -962,6 +969,9 @@ export default function Scene({
       style={{ width: '100%', height: '100%', position: 'relative' }}
       data-testid="scene-root"
       data-focus-mode={focusMode}
+      data-field-detail-mode={fieldDetailMode}
+      data-table-count={schema.tables.length}
+      data-ref-count={schema.refs.length}
     >
       <Canvas
         style={{ width: '100%', height: '100%' }}
