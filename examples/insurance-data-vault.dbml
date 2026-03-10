@@ -7,6 +7,65 @@
 //   Satellites — descriptive attributes, type-2 tracked
 // ============================================================
 
+Project InsuranceDataVault {
+  database_type: 'Snowflake'
+  Note: '''
+# Insurance Data Vault
+
+Raw Vault layer for **personal lines insurance** (auto + property).
+Built to [Data Vault 2.0](https://datavaultalliance.com) methodology.
+
+---
+
+## Structure
+
+| Layer | Pattern | Purpose |
+|-------|---------|---------|
+| **Hub** | `hub_*` | Core business keys — customer, policy, vehicle, property, claim |
+| **Link** | `lnk_*` | Relationships between hubs |
+| **Satellite** | `sat_*` | Descriptive attributes, fully type-2 historised |
+
+---
+
+## Key Business Entities
+
+- **Customer** — policyholder or named insured (national ID or assigned number)
+- **Policy** — insurance contract, covering auto or property lines
+- **Vehicle** — insured automobile, linked to a policy
+- **Property** — insured real-estate asset, linked to a policy
+- **Claim** — loss event reported against a policy
+
+---
+
+## Hash Key Convention
+
+All hub primary keys are **MD5 hashes** of the business key:
+
+```sql
+MD5(UPPER(TRIM(business_key)))
+```
+
+Link hash keys are MD5 hashes of the **concatenated** hub business keys,
+pipe-delimited and ordered alphabetically by hub name.
+
+---
+
+## Source Systems
+
+| Code | System |
+|------|--------|
+| `CRM` | Customer relationship management |
+| `UW` | Underwriting platform |
+| `CLAIMS` | Claims management system |
+| `TELEMATICS` | Vehicle telematics feed |
+
+---
+
+> **Note:** This is the Raw Vault layer only. Business Vault and
+> Information Mart layers are modelled separately.
+  '''
+}
+
 // ─────────────────────────────────────────────
 //  HUBS
 // ─────────────────────────────────────────────
