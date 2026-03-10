@@ -1,0 +1,33 @@
+Project BasicNote {
+  database_type: 'PostgreSQL'
+  Note: '''
+# Retail Data Warehouse
+
+This schema tracks **sales**, inventory, and customer data.
+
+## Tables
+
+- `orders` — customer purchase records
+- `products` — product catalogue
+- `customers` — registered users
+
+> Maintained by the data platform team.
+  '''
+}
+
+Table orders {
+  id integer [pk]
+  customer_id integer
+  total decimal
+}
+
+Table products {
+  id integer [pk]
+  name varchar
+  price decimal
+}
+
+Table customers {
+  id integer [pk]
+  email varchar
+}

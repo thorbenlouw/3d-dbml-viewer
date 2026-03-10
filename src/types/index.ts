@@ -42,6 +42,7 @@ export interface ParsedSchema {
   tables: ParsedTable[];
   refs: ParsedRef[];
   projectName?: string;
+  projectNote?: string;
   tableGroups?: ParsedTableGroup[];
 }
 

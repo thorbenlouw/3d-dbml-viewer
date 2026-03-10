@@ -11,6 +11,18 @@ const __dirname = dirname(__filename);
 
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
 const tablegroupsDbml = readFileSync(resolve(__dirname, '../fixtures/tablegroups.dbml'), 'utf-8');
+const projectNoteNoneDbml = readFileSync(
+  resolve(__dirname, '../fixtures/project-note-none.dbml'),
+  'utf-8',
+);
+const projectNoteBasicDbml = readFileSync(
+  resolve(__dirname, '../fixtures/project-note-basic.dbml'),
+  'utf-8',
+);
+const projectNoteUnsafeDbml = readFileSync(
+  resolve(__dirname, '../fixtures/project-note-unsafe-markdown.dbml'),
+  'utf-8',
+);
 
 describe('parser -> layout pipeline', () => {
   it('returns exactly 8 LayoutNode objects', () => {
@@ -152,5 +164,48 @@ describe('tablegroups.dbml: grouped layout pipeline', () => {
     expect(descriptors).toHaveLength(2);
     const names = descriptors.map((d) => d.name).sort();
     expect(names).toEqual(['dimensions', 'facts']);
+  });
+});
+
+describe('project-note fixtures: parser pipeline', () => {
+  it('project-note-none: projectNote is undefined when Project has no Note', () => {
+    const schema = parseDatabaseSchema(projectNoteNoneDbml);
+    expect(schema.projectNote).toBeUndefined();
+    expect(schema.projectName).toBe('NoNote');
+  });
+
+  it('project-note-none: layout still produces nodes for tables', () => {
+    const schema = parseDatabaseSchema(projectNoteNoneDbml);
+    const nodes = computeLayout(schema);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].name).toBe('users');
+  });
+
+  it('project-note-basic: projectNote is present and contains expected text', () => {
+    const schema = parseDatabaseSchema(projectNoteBasicDbml);
+    expect(schema.projectNote).toBeDefined();
+    expect(schema.projectNote).toContain('Retail Data Warehouse');
+    expect(schema.projectNote).toContain('orders');
+  });
+
+  it('project-note-basic: projectName is extracted correctly', () => {
+    const schema = parseDatabaseSchema(projectNoteBasicDbml);
+    expect(schema.projectName).toBe('BasicNote');
+  });
+
+  it('project-note-basic: layout produces nodes for all tables', () => {
+    const schema = parseDatabaseSchema(projectNoteBasicDbml);
+    const nodes = computeLayout(schema);
+    expect(nodes).toHaveLength(3);
+  });
+
+  it('project-note-unsafe: unsafe DBML parses without throwing', () => {
+    expect(() => parseDatabaseSchema(projectNoteUnsafeDbml)).not.toThrow();
+  });
+
+  it('project-note-unsafe: projectNote is extracted even with unsafe markdown content', () => {
+    const schema = parseDatabaseSchema(projectNoteUnsafeDbml);
+    expect(schema.projectNote).toBeDefined();
+    expect(schema.projectNote).toContain('Safe paragraph');
   });
 });

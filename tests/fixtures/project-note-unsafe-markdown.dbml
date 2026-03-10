@@ -1,0 +1,21 @@
+Project UnsafeNote {
+  database_type: 'PostgreSQL'
+  Note: '''
+# Project
+
+Safe paragraph.
+
+<script>alert("xss")</script>
+
+<a href="javascript:void(0)" onclick="alert(1)">Click me</a>
+
+<img src="x" onerror="alert(1)" />
+
+[Phishing link](javascript:alert(1))
+  '''
+}
+
+Table accounts {
+  id integer [pk]
+  username varchar
+}

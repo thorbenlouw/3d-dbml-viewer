@@ -11,6 +11,14 @@ const __dirname = dirname(__filename);
 const notesDemoDbml = readFileSync(resolve(__dirname, '../fixtures/notes-demo.dbml'), 'utf-8');
 const withProjectDbml = readFileSync(resolve(__dirname, '../fixtures/with-project.dbml'), 'utf-8');
 const colorStylesDbml = readFileSync(resolve(__dirname, '../fixtures/color-styles.dbml'), 'utf-8');
+const projectNoteNoneDbml = readFileSync(
+  resolve(__dirname, '../fixtures/project-note-none.dbml'),
+  'utf-8',
+);
+const projectNoteBasicDbml = readFileSync(
+  resolve(__dirname, '../fixtures/project-note-basic.dbml'),
+  'utf-8',
+);
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -216,6 +224,42 @@ describe('parseDatabaseSchema', () => {
       `;
       const schema = parseDatabaseSchema(dbml);
       expect(schema.projectName).toBeUndefined();
+    });
+  });
+
+  describe('project note extraction', () => {
+    it('extracts projectNote from with-project.dbml fixture', () => {
+      const schema = parseDatabaseSchema(withProjectDbml);
+      expect(schema.projectNote).toBe('Demo project for testing project name extraction');
+    });
+
+    it('returns projectNote === undefined when Project has no Note', () => {
+      const schema = parseDatabaseSchema(projectNoteNoneDbml);
+      expect(schema.projectNote).toBeUndefined();
+    });
+
+    it('extracts multi-line projectNote from project-note-basic fixture', () => {
+      const schema = parseDatabaseSchema(projectNoteBasicDbml);
+      expect(schema.projectNote).toBeDefined();
+      expect(schema.projectNote).toContain('Retail Data Warehouse');
+      expect(schema.projectNote).toContain('orders');
+    });
+
+    it('trims whitespace-only note to undefined', () => {
+      const dbml = `
+        Project Blank {
+          Note: '   '
+        }
+        Table items { id integer [pk] }
+      `;
+      const schema = parseDatabaseSchema(dbml);
+      expect(schema.projectNote).toBeUndefined();
+    });
+
+    it('returns projectNote === undefined when no Project block is present', () => {
+      const dbml = `Table users { id integer [pk] }`;
+      const schema = parseDatabaseSchema(dbml);
+      expect(schema.projectNote).toBeUndefined();
     });
   });
 

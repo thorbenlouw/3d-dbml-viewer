@@ -53,6 +53,7 @@ interface DbmlSchema {
 interface DbmlDatabase {
   schemas: DbmlSchema[];
   name?: string;
+  note?: string;
 }
 
 export class ParseError extends Error {
@@ -191,5 +192,9 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
   const projectName =
     rawProjectName !== undefined && rawProjectName.length > 0 ? rawProjectName : undefined;
 
-  return { tables, refs, projectName, tableGroups };
+  const rawProjectNote = database.note?.trim();
+  const projectNote =
+    rawProjectNote !== undefined && rawProjectNote.length > 0 ? rawProjectNote : undefined;
+
+  return { tables, refs, projectName, projectNote, tableGroups };
 }

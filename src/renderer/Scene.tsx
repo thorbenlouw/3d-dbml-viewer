@@ -54,6 +54,7 @@ import { resolveMarkerPlacementPosition } from './interaction';
 import { activateFocusMarker, activateStickyFocus, toggleStickyTable } from './focusMode';
 import TableGroupBoundary from './TableGroupBoundary';
 import { computeGroupBoundaries } from '@/layout';
+import ProjectNotesCard from './ProjectNotesCard';
 
 interface SceneProps {
   schema: ParsedSchema;
@@ -900,6 +901,12 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
           references={references}
           projectName={schema.projectName}
         />
+        {schema.projectName && schema.projectNote && (
+          <ProjectNotesCard
+            projectName={schema.projectName}
+            projectNote={schema.projectNote}
+          />
+        )}
       </div>
     );
   }
@@ -1002,6 +1009,13 @@ export default function Scene({ schema, onLoadFile }: SceneProps): ReactElement 
         references={references}
         projectName={schema.projectName}
       />
+
+      {schema.projectName && schema.projectNote && (
+        <ProjectNotesCard
+          projectName={schema.projectName}
+          projectNote={schema.projectNote}
+        />
+      )}
 
       <LoadFileButton onLoad={onLoadFile} />
       <div

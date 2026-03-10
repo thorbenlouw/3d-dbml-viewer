@@ -1,0 +1,8 @@
+Project NoNote {
+  database_type: 'PostgreSQL'
+}
+
+Table users {
+  id integer [pk]
+  name varchar
+}

@@ -1,0 +1,20 @@
+Project ImageNote {
+  database_type: 'PostgreSQL'
+  Note: '''
+# Schema Diagram
+
+See the architecture overview:
+
+![Architecture diagram](https://example.com/diagram.png)
+
+Broken image below (should fail gracefully):
+
+![Missing image](https://example.com/missing-404.png)
+  '''
+}
+
+Table events {
+  id integer [pk]
+  name varchar
+  occurred_at timestamp
+}
