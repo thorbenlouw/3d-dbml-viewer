@@ -1,7 +1,7 @@
 // Default fallback colors — must match existing constants for backward compatibility
-const DEFAULT_TABLE_HEADER_COLOR = '#1C5E95';
-const DEFAULT_LINK_COLOR = '#92D8FF';
-const DEFAULT_GROUP_BOUNDARY_COLOR = '#4a90d9';
+const DEFAULT_TABLE_HEADER_COLOR = '#1565C0';
+const DEFAULT_LINK_COLOR = '#29B6F6';
+const DEFAULT_GROUP_BOUNDARY_COLOR = '#29B6F6';
 
 // Accepts 3, 4, 6, or 8 hex digit forms (#rgb, #rgba, #rrggbb, #rrggbbaa)
 const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;

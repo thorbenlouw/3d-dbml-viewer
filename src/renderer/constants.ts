@@ -37,26 +37,26 @@ export const LINK_ENDPOINT_FANOUT_OFFSET = 0.2;
 export const LINK_CURVE_TENSION = 0.35;
 export const LINK_SEGMENTS = 28;
 
-export const SCENE_BG_COLOR = '#0B1020';
-export const CARD_BODY_COLOR = '#15304A';
-export const CARD_HEADER_COLOR = '#1C5E95';
-export const CARD_EDGE_COLOR = '#7BC8FF';
-export const CARD_ROW_ODD_COLOR = '#1A3A58';
-export const CARD_ROW_EVEN_COLOR = '#1E4365';
-export const TEXT_COLOR = '#F3FAFF';
-export const BADGE_BG_COLOR = '#2C3A4A';
-export const BADGE_TEXT_COLOR = '#F8FDFF';
-export const NOTE_BADGE_TEXT_COLOR = '#F8FDFF';
-export const LINK_COLOR = '#92D8FF';
-export const LINK_HIGHLIGHT_COLOR = '#facc15';
-export const COLUMN_HIGHLIGHT_COLOR = '#facc15';
+export const SCENE_BG_COLOR = '#080F1C';
+export const CARD_BODY_COLOR = '#0F2336';
+export const CARD_HEADER_COLOR = '#1565C0';
+export const CARD_EDGE_COLOR = '#29B6F6';
+export const CARD_ROW_ODD_COLOR = '#132D47';
+export const CARD_ROW_EVEN_COLOR = '#193656';
+export const TEXT_COLOR = '#E8F4FD';
+export const BADGE_BG_COLOR = '#243040';
+export const BADGE_TEXT_COLOR = '#E8F4FD';
+export const NOTE_BADGE_TEXT_COLOR = '#E8F4FD';
+export const LINK_COLOR = '#29B6F6';
+export const LINK_HIGHLIGHT_COLOR = '#FFA726';
+export const COLUMN_HIGHLIGHT_COLOR = '#FFA726';
 export const LINK_TUBE_RADIUS = 0.012;
 export const LINK_TUBE_RADIAL_SEGMENTS = 8;
 
-export const PANEL_BG_COLOR = 'rgba(15, 23, 42, 0.9)';
+export const PANEL_BG_COLOR = 'rgba(8, 15, 28, 0.92)';
 export const PANEL_TEXT_COLOR = '#F8FAFC';
-export const PANEL_ACCENT_COLOR = '#facc15';
-export const PANEL_BORDER_COLOR = 'rgba(148, 163, 184, 0.35)';
+export const PANEL_ACCENT_COLOR = '#FFA726';
+export const PANEL_BORDER_COLOR = 'rgba(100, 150, 200, 0.30)';
 
 export const SCENE_FONT_REGULAR = '/fonts/Inter-Regular.ttf';
 export const SCENE_FONT_BOLD = '/fonts/Inter-Bold.ttf';
@@ -67,7 +67,7 @@ export const BASE_LINK_DISTANCE = 1.5;
 export const STICKY_LINK_DISTANCE_MULTIPLIER = 0.65;
 export const NON_STICKY_LINK_DISTANCE_MULTIPLIER = 1.12;
 
-export const STICKY_BORDER_COLOR = '#facc15';
+export const STICKY_BORDER_COLOR = '#FFA726';
 export const STICKY_BORDER_GLOW_OPACITY = 0.75;
 
 export const NOTE_ICON_CHAR = '✎';
@@ -77,10 +77,10 @@ export const NOTE_PANEL_MAX_WIDTH = 3.0;
 export const NOTE_PANEL_MAX_HEIGHT = 2.5;
 export const NOTE_PANEL_PADDING = 0.12;
 export const NOTE_PANEL_OFFSET = 1.8;
-export const NOTE_CONNECTOR_COLOR = '#f59e0b';
+export const NOTE_CONNECTOR_COLOR = '#FFA726';
 export const NOTE_CONNECTOR_LINE_WIDTH = 1.5;
 
-export const FOCUS_MARKER_COLOR = '#facc15';
+export const FOCUS_MARKER_COLOR = '#FFA726';
 export const FOCUS_MARKER_OUTER_RADIUS = 0.2;
 export const FOCUS_MARKER_RING_THICKNESS = 0.145;
 export const FOCUS_MARKER_CENTER_RADIUS = 0.045;

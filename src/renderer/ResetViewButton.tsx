@@ -14,7 +14,7 @@ export default function ResetViewButton({ onClick }: ResetViewButtonProps): Reac
         position: 'fixed',
         bottom: '2.5rem',
         right: '1rem',
-        backgroundColor: '#1C95D3',
+        backgroundColor: '#0288D1',
         color: '#ffffff',
         fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
         padding: '0.5rem 1rem',
@@ -25,13 +25,13 @@ export default function ResetViewButton({ onClick }: ResetViewButtonProps): Reac
         fontWeight: 500,
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1580B8';
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0277BD';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1C95D3';
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0288D1';
       }}
       onFocus={(e) => {
-        e.currentTarget.style.outline = '2px solid #1C95D3';
+        e.currentTarget.style.outline = '2px solid #0288D1';
         e.currentTarget.style.outlineOffset = '2px';
       }}
       onBlur={(e) => {

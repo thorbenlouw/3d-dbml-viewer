@@ -45,7 +45,7 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
           position: 'fixed',
           bottom: '2.5rem',
           left: '1rem',
-          backgroundColor: '#334155',
+          backgroundColor: '#1C3552',
           color: '#ffffff',
           fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
           padding: '0.5rem 1rem',
@@ -57,10 +57,10 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
           zIndex: 40,
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#475569';
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#274565';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#334155';
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1C3552';
         }}
       >
         Load file…

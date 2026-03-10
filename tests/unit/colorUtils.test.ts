@@ -16,22 +16,22 @@ describe('resolveTableHeaderColor', () => {
 
   it('returns the default when color is undefined', () => {
     const result = resolveTableHeaderColor(undefined);
-    expect(result).toBe('#1C5E95');
+    expect(result).toBe('#1565C0');
   });
 
   it('returns the default when color is an empty string', () => {
     const result = resolveTableHeaderColor('');
-    expect(result).toBe('#1C5E95');
+    expect(result).toBe('#1565C0');
   });
 
   it('returns the default when color is whitespace only', () => {
     const result = resolveTableHeaderColor('   ');
-    expect(result).toBe('#1C5E95');
+    expect(result).toBe('#1565C0');
   });
 
   it('returns the default when color is an invalid string', () => {
     const result = resolveTableHeaderColor('not-a-color');
-    expect(result).toBe('#1C5E95');
+    expect(result).toBe('#1565C0');
   });
 
   it('accepts named CSS colors', () => {
@@ -45,11 +45,11 @@ describe('resolveLinkColor', () => {
   });
 
   it('returns the default link color when undefined', () => {
-    expect(resolveLinkColor(undefined)).toBe('#92D8FF');
+    expect(resolveLinkColor(undefined)).toBe('#29B6F6');
   });
 
   it('returns the default link color for invalid input', () => {
-    expect(resolveLinkColor('##bad')).toBe('#92D8FF');
+    expect(resolveLinkColor('##bad')).toBe('#29B6F6');
   });
 });
 
@@ -59,10 +59,10 @@ describe('resolveGroupBoundaryColor', () => {
   });
 
   it('returns the default group color when undefined', () => {
-    expect(resolveGroupBoundaryColor(undefined)).toBe('#4a90d9');
+    expect(resolveGroupBoundaryColor(undefined)).toBe('#29B6F6');
   });
 
   it('returns the default group color for invalid input', () => {
-    expect(resolveGroupBoundaryColor('purple-ish')).toBe('#4a90d9');
+    expect(resolveGroupBoundaryColor('purple-ish')).toBe('#29B6F6');
   });
 });
