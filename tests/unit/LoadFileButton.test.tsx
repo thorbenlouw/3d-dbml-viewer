@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe('LoadFileButton', () => {
   it('renders a button labelled "Load file…"', () => {
-    render(<LoadFileButton onLoad={vi.fn()} />);
+    render(<LoadFileButton onLoad={vi.fn()} onHandleChange={vi.fn()} />);
     const btn = screen.getByRole('button', { name: /load a dbml file from disk/i });
     expect(btn.textContent).toBe('Load file…');
   });
@@ -36,7 +36,7 @@ describe('LoadFileButton', () => {
     const onLoad = vi.fn();
     stubFileReader('Table foo { id int [pk] }');
 
-    const { container } = render(<LoadFileButton onLoad={onLoad} />);
+    const { container } = render(<LoadFileButton onLoad={onLoad} onHandleChange={vi.fn()} />);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['Table foo { id int [pk] }'], 'schema.dbml', { type: 'text/plain' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
@@ -49,7 +49,7 @@ describe('LoadFileButton', () => {
     const onLoad = vi.fn();
     stubFileReader('content');
 
-    const { container } = render(<LoadFileButton onLoad={onLoad} />);
+    const { container } = render(<LoadFileButton onLoad={onLoad} onHandleChange={vi.fn()} />);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['content'], 'schema.dbml', { type: 'text/plain' });
     Object.defineProperty(input, 'files', { value: [file], configurable: true });

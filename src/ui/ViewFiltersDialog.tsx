@@ -1,11 +1,12 @@
 import { useEffect, useMemo, type CSSProperties, type ReactElement } from 'react';
-import type { FilterState, ParsedTable } from '@/types';
+import type { FilterState, ParsedTable, ParsedTableGroup } from '@/types';
 
 interface ViewFiltersDialogProps {
   isOpen: boolean;
   filterState: FilterState;
   setFilterState: (nextFilterState: FilterState) => void;
   tables: ParsedTable[];
+  tableGroups?: ParsedTableGroup[];
   onClose: () => void;
 }
 
@@ -46,12 +47,34 @@ export default function ViewFiltersDialog({
   filterState,
   setFilterState,
   tables,
+  tableGroups,
   onClose,
 }: ViewFiltersDialogProps): ReactElement | null {
   const sortedTables = useMemo(
     () => [...tables].sort((a, b) => a.name.localeCompare(b.name)),
     [tables],
   );
+
+  const hasTableGroups = (tableGroups?.length ?? 0) > 0;
+
+  const sortedGroups = useMemo(
+    () => [...(tableGroups ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [tableGroups],
+  );
+
+  const ungroupedCount = useMemo(
+    () => tables.filter((t) => !t.tableGroup).length,
+    [tables],
+  );
+
+  const groupTableCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const table of tables) {
+      const key = table.tableGroup ?? '__ungrouped__';
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [tables]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -159,6 +182,165 @@ export default function ViewFiltersDialog({
               })}
             </div>
           </section>
+
+          {hasTableGroups && (
+            <section aria-labelledby="view-filters-group-heading">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  marginBottom: '0.8rem',
+                }}
+              >
+                <h3
+                  id="view-filters-group-heading"
+                  style={{ margin: 0, fontSize: '0.95rem', color: '#cbd5e1' }}
+                >
+                  Table Groups
+                </h3>
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    style={BUTTON_STYLE}
+                    onClick={() => {
+                      const allGroupIds = new Set<string>(sortedGroups.map((g) => g.name));
+                      if (ungroupedCount > 0) allGroupIds.add('__ungrouped__');
+                      setFilterState({ ...filterState, visibleTableGroupIds: allGroupIds });
+                    }}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    style={BUTTON_STYLE}
+                    onClick={() =>
+                      setFilterState({
+                        ...filterState,
+                        visibleTableGroupIds: new Set<string>(),
+                      })
+                    }
+                  >
+                    Unselect All
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  maxHeight: '14rem',
+                  overflowY: 'auto',
+                  border: '1px solid rgba(148, 163, 184, 0.16)',
+                  borderRadius: '0.85rem',
+                  background: 'rgba(15, 23, 42, 0.35)',
+                  marginBottom: '0.8rem',
+                }}
+              >
+                {sortedGroups.map((group, index) => {
+                  const checked = filterState.visibleTableGroupIds.has(group.name);
+                  const count = groupTableCounts.get(group.name) ?? 0;
+                  return (
+                    <label
+                      key={group.name}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        padding: '0.8rem 0.9rem',
+                        borderTop: index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.7rem' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            const next = new Set(filterState.visibleTableGroupIds);
+                            if (checked) {
+                              next.delete(group.name);
+                            } else {
+                              next.add(group.name);
+                            }
+                            setFilterState({ ...filterState, visibleTableGroupIds: next });
+                          }}
+                        />
+                        <span>{group.name}</span>
+                      </span>
+                      <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
+                        {count} {count === 1 ? 'table' : 'tables'}
+                      </span>
+                    </label>
+                  );
+                })}
+                {ungroupedCount > 0 && (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      padding: '0.8rem 0.9rem',
+                      borderTop:
+                        sortedGroups.length > 0
+                          ? '1px solid rgba(148, 163, 184, 0.12)'
+                          : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.7rem' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
+                        onChange={() => {
+                          const next = new Set(filterState.visibleTableGroupIds);
+                          if (next.has('__ungrouped__')) {
+                            next.delete('__ungrouped__');
+                          } else {
+                            next.add('__ungrouped__');
+                          }
+                          setFilterState({ ...filterState, visibleTableGroupIds: next });
+                        }}
+                      />
+                      <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Ungrouped</span>
+                    </span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
+                      {ungroupedCount} {ungroupedCount === 1 ? 'table' : 'tables'}
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#cbd5e1',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={filterState.showTableGroupBoundaries}
+                  onChange={() =>
+                    setFilterState({
+                      ...filterState,
+                      showTableGroupBoundaries: !filterState.showTableGroupBoundaries,
+                    })
+                  }
+                />
+                Show TableGroup Boundaries
+              </label>
+            </section>
+          )}
 
           <section aria-labelledby="view-filters-tables-heading">
             <div

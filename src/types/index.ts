@@ -124,4 +124,6 @@ export type FieldDetailMode = 'full' | 'ref-fields-only' | 'table-only';
 export interface FilterState {
   fieldDetailMode: FieldDetailMode;
   visibleTableIds: Set<string>;
+  visibleTableGroupIds: Set<string>; // '__ungrouped__' sentinel for tables with no tableGroup
+  showTableGroupBoundaries: boolean; // default true when schema has TableGroups
 }

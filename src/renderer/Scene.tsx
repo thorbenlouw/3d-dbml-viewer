@@ -61,6 +61,7 @@ interface SceneProps {
   schema: ParsedSchema;
   sourceSchema?: ParsedSchema;
   fieldDetailMode?: FieldDetailMode;
+  showTableGroupBoundaries?: boolean;
 }
 
 interface CameraTweenState {
@@ -580,6 +581,7 @@ export default function Scene({
   schema,
   sourceSchema = schema,
   fieldDetailMode = 'full',
+  showTableGroupBoundaries = true,
 }: SceneProps): ReactElement {
   const hasWebGL = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -1037,9 +1039,10 @@ export default function Scene({
           );
         })}
 
-        {groupBoundaries.map((boundary) => (
-          <TableGroupBoundary key={boundary.groupId} boundary={boundary} />
-        ))}
+        {showTableGroupBoundaries &&
+          groupBoundaries.map((boundary) => (
+            <TableGroupBoundary key={boundary.groupId} boundary={boundary} />
+          ))}
 
         {cardNodes.map((node) => {
           const highlightedColumn =

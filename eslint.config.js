@@ -10,7 +10,7 @@ import globals from 'globals';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ['dist/', 'node_modules/', '*.config.js', 'coverage/', 'playwright-report/'],
+    ignores: ['dist/', 'node_modules/', '*.config.js', 'coverage/', 'playwright-report/', '.playwright-browsers/'],
   },
   {
     files: ['*.config.ts', 'vite.config.ts', 'vitest.config.ts', 'playwright.config.ts'],

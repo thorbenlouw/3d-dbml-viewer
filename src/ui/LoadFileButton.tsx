@@ -1,14 +1,47 @@
-import { useRef, type ReactElement, type ChangeEvent } from 'react';
+import { useRef, type ReactElement, type ChangeEvent, type CSSProperties } from 'react';
 
 interface LoadFileButtonProps {
   onLoad: (text: string) => void;
+  onHandleChange: (handle: FileSystemFileHandle | null) => void;
 }
 
-export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactElement {
+const BUTTON_STYLE: CSSProperties = {
+  backgroundColor: '#1C3552',
+  color: '#ffffff',
+  fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
+  padding: '0.5rem 1rem',
+  borderRadius: '0.375rem',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  fontWeight: 500,
+};
+
+export default function LoadFileButton({
+  onLoad,
+  onHandleChange,
+}: LoadFileButtonProps): ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleButtonClick(): void {
-    inputRef.current?.click();
+  async function handleButtonClick(): Promise<void> {
+    if (typeof window.showOpenFilePicker === 'function') {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ accept: { 'text/plain': ['.dbml'] } }],
+          multiple: false,
+        });
+        const file = await handle.getFile();
+        const text = await file.text();
+        onLoad(text);
+        onHandleChange(handle);
+      } catch (err) {
+        // User cancelled the picker — AbortError is expected
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        throw err;
+      }
+    } else {
+      inputRef.current?.click();
+    }
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>): void {
@@ -20,6 +53,7 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
       const text = event.target?.result;
       if (typeof text === 'string') {
         onLoad(text);
+        onHandleChange(null);
       }
     };
     reader.readAsText(file);
@@ -39,19 +73,11 @@ export default function LoadFileButton({ onLoad }: LoadFileButtonProps): ReactEl
       />
       <button
         type="button"
-        onClick={handleButtonClick}
-        aria-label="Load a DBML file from disk"
-        style={{
-          backgroundColor: '#1C3552',
-          color: '#ffffff',
-          fontFamily: "'Lexend', 'Helvetica Neue', Arial, sans-serif",
-          padding: '0.5rem 1rem',
-          borderRadius: '0.375rem',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '0.875rem',
-          fontWeight: 500,
+        onClick={() => {
+          void handleButtonClick();
         }}
+        aria-label="Load a DBML file from disk"
+        style={BUTTON_STYLE}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#274565';
         }}

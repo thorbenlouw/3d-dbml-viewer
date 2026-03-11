@@ -31,4 +31,54 @@ describe('defaultFilterState', () => {
     expect(result.fieldDetailMode).toBe('table-only');
     expect([...result.visibleTableIds]).toEqual(schema.tables.map((table) => table.id));
   });
+
+  it('sets showTableGroupBoundaries to false when schema has no TableGroups', () => {
+    const schema = makeSchema(3);
+    const result = defaultFilterState(schema);
+    expect(result.showTableGroupBoundaries).toBe(false);
+  });
+
+  it('sets showTableGroupBoundaries to true when schema has TableGroups', () => {
+    const schema: ParsedSchema = {
+      tables: [{ id: 'A', name: 'A', columns: [], tableGroup: 'GroupA' }],
+      refs: [],
+      tableGroups: [{ name: 'GroupA' }],
+    };
+    const result = defaultFilterState(schema);
+    expect(result.showTableGroupBoundaries).toBe(true);
+  });
+
+  it('populates visibleTableGroupIds with all group names', () => {
+    const schema: ParsedSchema = {
+      tables: [
+        { id: 'A', name: 'A', columns: [], tableGroup: 'G1' },
+        { id: 'B', name: 'B', columns: [], tableGroup: 'G2' },
+      ],
+      refs: [],
+      tableGroups: [{ name: 'G1' }, { name: 'G2' }],
+    };
+    const result = defaultFilterState(schema);
+    expect(result.visibleTableGroupIds.has('G1')).toBe(true);
+    expect(result.visibleTableGroupIds.has('G2')).toBe(true);
+    expect(result.visibleTableGroupIds.has('__ungrouped__')).toBe(false);
+  });
+
+  it('adds __ungrouped__ sentinel when schema has ungrouped tables', () => {
+    const schema: ParsedSchema = {
+      tables: [
+        { id: 'A', name: 'A', columns: [], tableGroup: 'G1' },
+        { id: 'B', name: 'B', columns: [] }, // no tableGroup
+      ],
+      refs: [],
+      tableGroups: [{ name: 'G1' }],
+    };
+    const result = defaultFilterState(schema);
+    expect(result.visibleTableGroupIds.has('__ungrouped__')).toBe(true);
+  });
+
+  it('adds __ungrouped__ sentinel even when schema has no TableGroups but has ungrouped tables', () => {
+    const schema = makeSchema(2);
+    const result = defaultFilterState(schema);
+    expect(result.visibleTableGroupIds.has('__ungrouped__')).toBe(true);
+  });
 });

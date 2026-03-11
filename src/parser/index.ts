@@ -75,9 +75,17 @@ export class ParseError extends Error {
 }
 
 export function defaultFilterState(schema: ParsedSchema): FilterState {
+  const hasGroups = (schema.tableGroups?.length ?? 0) > 0;
+  const hasUngrouped = schema.tables.some((t) => !t.tableGroup);
+
+  const visibleTableGroupIds = new Set<string>(schema.tableGroups?.map((g) => g.name) ?? []);
+  if (hasUngrouped) visibleTableGroupIds.add('__ungrouped__');
+
   return {
     fieldDetailMode: schema.tables.length > 30 ? 'table-only' : 'full',
     visibleTableIds: new Set(schema.tables.map((table) => table.id)),
+    visibleTableGroupIds,
+    showTableGroupBoundaries: hasGroups,
   };
 }
 
@@ -88,6 +96,13 @@ export function isFilterActive(filterState: FilterState, defaultState: FilterSta
   for (const tableId of filterState.visibleTableIds) {
     if (!defaultState.visibleTableIds.has(tableId)) return true;
   }
+
+  if (filterState.visibleTableGroupIds.size !== defaultState.visibleTableGroupIds.size) return true;
+  for (const groupId of filterState.visibleTableGroupIds) {
+    if (!defaultState.visibleTableGroupIds.has(groupId)) return true;
+  }
+
+  if (filterState.showTableGroupBoundaries !== defaultState.showTableGroupBoundaries) return true;
 
   return false;
 }

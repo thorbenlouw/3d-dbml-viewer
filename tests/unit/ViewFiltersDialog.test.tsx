@@ -19,6 +19,8 @@ function makeFilterState(): FilterState {
   return {
     fieldDetailMode: 'full',
     visibleTableIds: new Set(TABLES.map((table) => table.id)),
+    visibleTableGroupIds: new Set(['__ungrouped__']),
+    showTableGroupBoundaries: false,
   };
 }
 
@@ -42,10 +44,12 @@ describe('ViewFiltersDialog', () => {
 
     fireEvent.click(screen.getByLabelText(/ref fields only/i));
 
-    expect(setFilterState).toHaveBeenCalledWith({
-      fieldDetailMode: 'ref-fields-only',
-      visibleTableIds: new Set(['users', 'accounts']),
-    });
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fieldDetailMode: 'ref-fields-only',
+        visibleTableIds: new Set(['users', 'accounts']),
+      }),
+    );
   });
 
   it('calls setFilterState with updated visibleTableIds when a table is toggled', () => {
@@ -63,10 +67,12 @@ describe('ViewFiltersDialog', () => {
 
     fireEvent.click(screen.getByLabelText(/users/i));
 
-    expect(setFilterState).toHaveBeenCalledWith({
-      fieldDetailMode: 'full',
-      visibleTableIds: new Set(['accounts']),
-    });
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fieldDetailMode: 'full',
+        visibleTableIds: new Set(['accounts']),
+      }),
+    );
   });
 
   it('closes on Escape and keeps tables sorted alphabetically', () => {

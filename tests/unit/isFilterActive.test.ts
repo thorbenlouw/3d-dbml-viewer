@@ -5,10 +5,14 @@ import type { FilterState } from '@/types';
 function makeFilterState(
   visibleTableIds: string[],
   fieldDetailMode: FilterState['fieldDetailMode'] = 'full',
+  visibleTableGroupIds: string[] = ['__ungrouped__'],
+  showTableGroupBoundaries = false,
 ): FilterState {
   return {
     fieldDetailMode,
     visibleTableIds: new Set(visibleTableIds),
+    visibleTableGroupIds: new Set(visibleTableGroupIds),
+    showTableGroupBoundaries,
   };
 }
 
@@ -49,5 +53,26 @@ describe('isFilterActive', () => {
     const result = isFilterActive(makeFilterState(['users', 'comments']), defaultState);
 
     expect(result).toBe(true);
+  });
+
+  it('returns true when a group is hidden compared with the default', () => {
+    const defaultState = makeFilterState(['users'], 'full', ['GroupA', '__ungrouped__']);
+    const current = makeFilterState(['users'], 'full', ['__ungrouped__']); // GroupA removed
+
+    expect(isFilterActive(current, defaultState)).toBe(true);
+  });
+
+  it('returns false when group sets are identical', () => {
+    const defaultState = makeFilterState(['users'], 'full', ['GroupA', '__ungrouped__']);
+    const current = makeFilterState(['users'], 'full', ['GroupA', '__ungrouped__']);
+
+    expect(isFilterActive(current, defaultState)).toBe(false);
+  });
+
+  it('returns true when showTableGroupBoundaries differs from default', () => {
+    const defaultState = makeFilterState(['users'], 'full', ['__ungrouped__'], true);
+    const current = makeFilterState(['users'], 'full', ['__ungrouped__'], false);
+
+    expect(isFilterActive(current, defaultState)).toBe(true);
   });
 });

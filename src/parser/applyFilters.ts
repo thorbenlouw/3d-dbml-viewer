@@ -8,12 +8,17 @@ import type { ParsedSchema, FilterState } from '@/types';
  * The returned schema is a shallow clone — callers must not mutate it.
  */
 export function applyFilters(schema: ParsedSchema, filterState: FilterState): ParsedSchema {
-  const { visibleTableIds } = filterState;
+  const { visibleTableIds, visibleTableGroupIds } = filterState;
 
-  const tables = schema.tables.filter((t) => visibleTableIds.has(t.id));
+  const tables = schema.tables.filter((t) => {
+    const groupKey = t.tableGroup ?? '__ungrouped__';
+    return visibleTableIds.has(t.id) && visibleTableGroupIds.has(groupKey);
+  });
+
+  const visibleIds = new Set(tables.map((t) => t.id));
 
   const refs = schema.refs.filter(
-    (r) => visibleTableIds.has(r.sourceId) && visibleTableIds.has(r.targetId),
+    (r) => visibleIds.has(r.sourceId) && visibleIds.has(r.targetId),
   );
 
   return {
