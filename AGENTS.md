@@ -117,18 +117,27 @@ unit, not its private internals.
 can only verify DOM structure; it cannot confirm that 3D boxes are actually
 visible on screen. A blank white canvas will pass the headless tests.
 
-**The agent is sandboxed and cannot launch headed browsers or use the
-Playwright MCP directly.** When headed E2E tests or visual WebGL verification
-are required, ask the human user to run them in a separate terminal and paste
-the output back into the chat.
+**The agent is sandboxed and cannot launch headed browsers.** When headed E2E
+tests or visual WebGL verification are required, ask the human user to run the
+command below in a separate terminal. The output and screenshots are written to
+`test-evidence/` so the agent can analyse them directly without the user needing
+to paste anything back.
 
-Whenever you implement or modify renderer components (`src/renderer/`) or
-visual/E2E tests, include a message like:
+Ask the user to run:
 
-> Please run `pnpm test:e2e --headed` in your terminal and paste the output
-> here so I can verify the results.
+```bash
+pnpm test:e2e --headed 2>&1 | tee test-evidence/e2e-run.txt
+```
 
-Wait for the user to provide the output before considering the work done.
+Then read the results yourself:
+
+```
+Read test-evidence/e2e-run.txt          # pass/fail summary and error details
+Read test-evidence/<screenshot>.png     # any screenshot saved during the run
+```
+
+Wait until the user confirms the command has finished, then read the files above
+before considering the work done.
 
 The opacity/distance calculation bug that made all boxes invisible on a white
 background was only caught by visual inspection — do not skip this step for
