@@ -113,7 +113,6 @@ export default function TableCard({
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const tableHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const rowHitMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const titleScaleGroupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
@@ -150,9 +149,6 @@ export default function TableCard({
     }
     if (tableHitMaterialRef.current) tableHitMaterialRef.current.depthWrite = false;
     if (headerHitMaterialRef.current) headerHitMaterialRef.current.depthWrite = false;
-    for (const material of rowHitMaterialRefs.current) {
-      if (material) material.depthWrite = false;
-    }
   }, []);
 
   useEffect(() => {
@@ -320,13 +316,7 @@ export default function TableCard({
               }}
             >
               <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, 0.015]} />
-              <meshBasicMaterial
-                ref={(material) => {
-                  rowHitMaterialRefs.current[index] = material;
-                }}
-                transparent
-                opacity={0}
-              />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
 
             <mesh position={[0, rowY, dimensions.depth / 2 - rowSliceDepth / 2 + 0.001]}>
