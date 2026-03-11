@@ -87,7 +87,8 @@ test('AT-2: hiding a group removes all its tables from the scene', async ({ page
   await expect(sceneRoot).toHaveAttribute('data-table-count', '5');
 
   // Uncheck the "commerce" group (orders + customers = 2 tables)
-  await page.getByRole('checkbox', { name: /^commerce$/i }).uncheck();
+  // Accessible name includes "N tables" suffix so we use a substring match
+  await page.getByRole('checkbox', { name: /commerce/i }).uncheck();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '3');
 
   await page.screenshot({ path: resolve(evidenceDir, 'at2-group-hidden.png') });
@@ -105,7 +106,7 @@ test('AT-3: refs to hidden-group tables disappear', async ({ page }) => {
   await expect(sceneRoot).toHaveAttribute('data-ref-count', '4');
 
   // Uncheck catalog (products + categories); loses 3 refs involving these tables
-  await page.getByRole('checkbox', { name: /^catalog$/i }).uncheck();
+  await page.getByRole('checkbox', { name: /catalog/i }).uncheck();
   // Remaining: orders->customers only (1 ref)
   await expect(sceneRoot).toHaveAttribute('data-ref-count', '1');
 
@@ -164,15 +165,16 @@ test('AT-6: per-table hidden table stays hidden after group re-enable', async ({
   const sceneRoot = page.getByTestId('scene-root');
 
   // Hide one per-table entry (orders) via the Tables section
-  await page.getByRole('checkbox', { name: /^orders$/i }).uncheck();
+  // Accessible name includes "N fields" suffix; use substring match
+  await page.getByRole('checkbox', { name: /orders/i }).uncheck();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '4');
 
   // Now hide the commerce group — drops orders and customers
-  await page.getByRole('checkbox', { name: /^commerce$/i }).uncheck();
+  await page.getByRole('checkbox', { name: /commerce/i }).uncheck();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '3');
 
   // Re-enable the commerce group — orders should STILL be hidden (per-table hidden)
-  await page.getByRole('checkbox', { name: /^commerce$/i }).check();
+  await page.getByRole('checkbox', { name: /commerce/i }).check();
   // Orders is still in visibleTableIds=false, so only customers comes back
   await expect(sceneRoot).toHaveAttribute('data-table-count', '4');
 
@@ -281,7 +283,7 @@ test('AT-9: reload resets filters to defaults', async ({ page }) => {
 
   // Apply a filter (hide orders table)
   await openViewFilters(page);
-  await page.getByRole('checkbox', { name: /^orders$/i }).uncheck();
+  await page.getByRole('checkbox', { name: /orders/i }).uncheck();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '4');
   await page.getByRole('button', { name: /close view filters/i }).click();
 
@@ -341,7 +343,7 @@ test('AT-10: reload failure shows error banner and preserves prior scene', async
   await reloadButton.click();
 
   // Error banner should appear
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('error-banner')).toBeVisible({ timeout: 5000 });
 
   // Prior scene (5 tables) preserved
   await expect(sceneRoot).toHaveAttribute('data-table-count', '5');

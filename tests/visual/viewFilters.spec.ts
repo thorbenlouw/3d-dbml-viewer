@@ -90,11 +90,11 @@ test('view filters mode changes, hide/show actions, and indicator work', async (
   await expect(page.getByTestId('view-filters-active-indicator')).toBeVisible();
 
   await openViewFilters(page);
-  await page.getByRole('button', { name: 'Unselect All' }).click();
+  await page.getByRole('button', { name: 'Unselect All', exact: true }).click();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '0');
   await expect(sceneRoot).toHaveAttribute('data-ref-count', '0');
 
-  await page.getByRole('button', { name: 'Select All' }).click();
+  await page.getByRole('button', { name: 'Select All', exact: true }).click();
   await expect(sceneRoot).toHaveAttribute('data-table-count', '3');
   await expect(sceneRoot).toHaveAttribute('data-ref-count', '3');
 });
