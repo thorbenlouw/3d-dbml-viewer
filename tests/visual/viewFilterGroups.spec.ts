@@ -225,8 +225,8 @@ test('AT-8: reload picks up changed file content via mocked File System Access A
         },
         // Minimal FileSystemFileHandle shape
         isSameEntry: async () => false,
-        queryPermission: async () => 'granted' as PermissionState,
-        requestPermission: async () => 'granted' as PermissionState,
+        queryPermission: async () => 'granted',
+        requestPermission: async () => 'granted',
         createWritable: async () => { throw new Error('not implemented'); },
       };
 
@@ -267,8 +267,8 @@ test('AT-9: reload resets filters to defaults', async ({ page }) => {
         name: 'schema.dbml',
         getFile: async () => makeFile(fileContent),
         isSameEntry: async () => false,
-        queryPermission: async () => 'granted' as PermissionState,
-        requestPermission: async () => 'granted' as PermissionState,
+        queryPermission: async () => 'granted',
+        requestPermission: async () => 'granted',
         createWritable: async () => { throw new Error('not implemented'); },
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -317,8 +317,8 @@ test('AT-10: reload failure shows error banner and preserves prior scene', async
           return makeFile(fileContent);
         },
         isSameEntry: async () => false,
-        queryPermission: async () => 'granted' as PermissionState,
-        requestPermission: async () => 'granted' as PermissionState,
+        queryPermission: async () => 'granted',
+        requestPermission: async () => 'granted',
         createWritable: async () => { throw new Error('not implemented'); },
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,0 +1,28 @@
+
+> 3d-dbml-viewer@0.0.0 test:e2e /Users/thorben/dev/equalexperts/3d-dbml-viewer
+> playwright test --headed
+
+
+Running 19 tests using 5 workers
+
+  ✓   4 [chromium] › tests/visual/viewFilterGroups.spec.ts:56:1 › AT-1: no Table Groups section for ungrouped schema; section appears for grouped schema (3.2s)
+  ✓   5 [chromium] › tests/visual/viewFilters.spec.ts:43:1 › view filters defaults for small and large schemas (4.0s)
+  ✓   2 [chromium] › tests/visual/scene.spec.ts:3:1 › 3D scene renders with canvas, Reset View button, and no errors (4.5s)
+  ✓   3 [chromium] › tests/e2e/loadDbmlFromDisk.spec.ts:17:1 › load DBML from disk — all example files and error handling (5.8s)
+  ✓   6 [chromium] › tests/visual/viewFilterGroups.spec.ts:79:1 › AT-2: hiding a group removes all its tables from the scene (3.0s)
+  ✓   8 [chromium] › tests/visual/scene.spec.ts:43:1 › field and table notes — canvas loads without errors (2.4s)
+  ✓   1 [chromium] › tests/e2e/interactiveLayout.spec.ts:42:1 › interactive layout — canvas loads and tables are visible (6.9s)
+  ✓   7 [chromium] › tests/visual/viewFilters.spec.ts:62:1 › view filters mode changes, hide/show actions, and indicator work (3.0s)
+  ✓   9 [chromium] › tests/visual/viewFilterGroups.spec.ts:98:1 › AT-3: refs to hidden-group tables disappear (1.9s)
+  ✓  11 [chromium] › tests/visual/viewFilters.spec.ts:102:1 › view filters dialog closes on Escape (1.6s)
+  ✓  12 [chromium] › tests/visual/viewFilterGroups.spec.ts:117:1 › AT-4: Ungrouped filter hides only ungrouped tables (1.5s)
+  ✓  10 [chromium] › tests/e2e/interactiveLayout.spec.ts:90:1 › interactive layout — drag simulation runs without JS errors (3.6s)
+  ✓  13 [chromium] › tests/visual/viewFilterGroups.spec.ts:138:1 › AT-5: Show TableGroup Boundaries toggle responds to user interaction (1.1s)
+  ✓  15 [chromium] › tests/visual/viewFilterGroups.spec.ts:158:1 › AT-6: per-table hidden table stays hidden after group re-enable (1.4s)
+  ✓  16 [chromium] › tests/visual/viewFilterGroups.spec.ts:185:1 › AT-7: reload button is disabled for default schema; visible and disabled (894ms)
+  ✓  14 [chromium] › tests/e2e/interactiveLayout.spec.ts:131:1 › interactive layout — focus marker placement/removal works (3.6s)
+  ✓  17 [chromium] › tests/visual/viewFilterGroups.spec.ts:203:1 › AT-8: reload picks up changed file content via mocked File System Access API (1.4s)
+  ✓  18 [chromium] › tests/visual/viewFilterGroups.spec.ts:256:1 › AT-9: reload resets filters to defaults (1.5s)
+  ✓  19 [chromium] › tests/visual/viewFilterGroups.spec.ts:300:1 › AT-10: reload failure shows error banner and preserves prior scene (1.4s)
+
+  19 passed (18.7s)
