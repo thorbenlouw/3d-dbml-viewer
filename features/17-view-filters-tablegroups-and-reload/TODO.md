@@ -41,10 +41,10 @@ Update `defaultFilterState()` in `src/parser/index.ts`:
 
 Update `isFilterActive()` to detect divergence in both new fields.
 
-- [ ] Extend `FilterState` interface
-- [ ] Update `defaultFilterState`
-- [ ] Update `isFilterActive`
-- [ ] TypeScript strict-mode clean (`pnpm typecheck`)
+- [x] Extend `FilterState` interface
+- [x] Update `defaultFilterState`
+- [x] Update `isFilterActive`
+- [x] TypeScript strict-mode clean (`pnpm typecheck`)
 
 ---
 
@@ -57,9 +57,9 @@ Update `isFilterActive()` to detect divergence in both new fields.
 
 Refs: both endpoint tables must pass the combined filter (no change to the ref logic itself, just let the table filter do the work).
 
-- [ ] Implement intersection filter in `applyFilters`
-- [ ] Handle `'__ungrouped__'` sentinel correctly
-- [ ] Existing per-table filter behaviour unchanged
+- [x] Implement intersection filter in `applyFilters`
+- [x] Handle `'__ungrouped__'` sentinel correctly
+- [x] Existing per-table filter behaviour unchanged
 
 ---
 
@@ -84,12 +84,12 @@ When schema has no `TableGroup`s: hide both section and toggle entirely.
 
 Pass `tableGroups` and `allTables` as props; derive ungrouped entries inside the component.
 
-- [ ] Conditionally render Table Groups section
-- [ ] Group checkbox rows with Select All / Unselect All
-- [ ] Ungrouped synthetic row
-- [ ] Show TableGroup Boundaries toggle
-- [ ] Section hidden for schemas without TableGroups (AT-1)
-- [ ] Accessible: section labelled, all inputs have visible labels
+- [x] Conditionally render Table Groups section
+- [x] Group checkbox rows with Select All / Unselect All
+- [x] Ungrouped synthetic row
+- [x] Show TableGroup Boundaries toggle
+- [x] Section hidden for schemas without TableGroups (AT-1)
+- [x] Accessible: section labelled, all inputs have visible labels
 
 ---
 
@@ -101,9 +101,9 @@ Pass `tableGroups` and `allTables` as props; derive ungrouped entries inside the
 - Boundaries for groups whose tables are all hidden should also not render (the group won't appear in `groupBoundaries` once `applyFilters` removes those tables — confirm during impl)
 - Toggling boundaries must not affect table visibility, refs, layout, or hover state
 
-- [ ] Add `showTableGroupBoundaries` prop to `Scene`
-- [ ] Conditional `TableGroupBoundary` rendering
-- [ ] Verify toggle has no side-effects on tables/refs/layout
+- [x] Add `showTableGroupBoundaries` prop to `Scene`
+- [x] Conditional `TableGroupBoundary` rendering
+- [x] Verify toggle has no side-effects on tables/refs/layout
 
 ---
 
@@ -125,11 +125,11 @@ interface LoadFileButtonProps {
 }
 ```
 
-- [ ] Detect API availability
-- [ ] `showOpenFilePicker` preferred path
-- [ ] `input[type=file]` fallback
-- [ ] `onHandleChange` callback wired in `App.tsx`
-- [ ] TypeScript types correct (may need `@types/wicg-file-system-access` or `lib.dom` augmentation)
+- [x] Detect API availability
+- [x] `showOpenFilePicker` preferred path
+- [x] `input[type=file]` fallback
+- [x] `onHandleChange` callback wired in `App.tsx`
+- [x] TypeScript types correct (may need `@types/wicg-file-system-access` or `lib.dom` augmentation)
 
 ---
 
@@ -145,12 +145,12 @@ Add a reload icon button immediately to the right of *Load file…* in `App.tsx`
 - Accessible name: `Reload current file`
 - Disabled tooltip/description: *Reload is available only for files opened with persistent file access*
 
-- [ ] Store `fileHandle: FileSystemFileHandle | null` in `App` state
-- [ ] Reload button component or inline JSX
-- [ ] Enabled/disabled state wired to handle availability
-- [ ] Reload flow: getFile → parse → setSchema + setFilterState reset
-- [ ] Error handling: banner shown, prior scene kept
-- [ ] Accessible label and disabled description
+- [x] Store `fileHandle: FileSystemFileHandle | null` in `App` state
+- [x] Reload button component or inline JSX
+- [x] Enabled/disabled state wired to handle availability
+- [x] Reload flow: getFile → parse → setSchema + setFilterState reset
+- [x] Error handling: banner shown, prior scene kept
+- [x] Accessible label and disabled description
 
 ---
 
@@ -165,10 +165,10 @@ Add/extend unit tests in `tests/unit/parser/`:
 
 Use `it.each` for data-driven cases.
 
-- [ ] `defaultFilterState` tests
-- [ ] `isFilterActive` tests for new fields
-- [ ] `applyFilters` group × table intersection tests
-- [ ] `pnpm test:run` passes, coverage ≥ 80 % on modified parser files
+- [x] `defaultFilterState` tests
+- [x] `isFilterActive` tests for new fields
+- [x] `applyFilters` group × table intersection tests
+- [x] `pnpm test:run` passes, coverage ≥ 80 % on modified parser files
 
 ---
 
@@ -192,10 +192,10 @@ Add Playwright tests in `tests/visual/` covering all PRD acceptance tests:
 
 Add a grouped DBML fixture to `tests/fixtures/` if one does not exist.
 
-- [ ] Grouped schema fixture in `tests/fixtures/`
-- [ ] AT-1 through AT-6 (filter dialog tests)
-- [ ] AT-7 through AT-10 (reload tests)
-- [ ] `pnpm test:e2e` passes with no console errors
+- [x] Grouped schema fixture in `tests/fixtures/`
+- [x] AT-1 through AT-6 (filter dialog tests)
+- [x] AT-7 through AT-10 (reload tests)
+- [x] `pnpm test:e2e` passes with no console errors
 
 ---
 

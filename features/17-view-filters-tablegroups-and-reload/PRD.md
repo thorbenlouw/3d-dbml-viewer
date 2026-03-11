@@ -291,9 +291,19 @@ load.
 - Large schemas with many groups may require careful dialog layout to avoid a
   cramped UI.
 
-## Open Questions
+## Open Questions — Resolved
 
-1. Should the group section include table counts only, or also field/ref counts?
-2. Should the reload button be hidden when unavailable, or always shown disabled?
-3. Should reloading preserve camera position, or behave like a normal fresh
-   schema load and re-fit the camera?
+1. **Should the group section include table counts only, or also field/ref counts?**
+   Resolved: table counts only (`N tables` suffix per row). Field/ref counts add
+   complexity without clear user benefit at this stage.
+
+2. **Should the reload button be hidden when unavailable, or always shown disabled?**
+   Resolved: always shown, disabled. Hiding it entirely would confuse users who
+   expect the button to exist; a disabled button with a descriptive tooltip
+   communicates the capability and its current constraint.
+
+3. **Should reloading preserve camera position, or behave like a normal fresh
+   schema load and re-fit the camera?**
+   Resolved: camera position is preserved. Reload calls the same `handleSchemaLoad`
+   path as a fresh load, which updates schema and filter state but does not reset
+   the camera — the user's spatial context is maintained across iterative edits.

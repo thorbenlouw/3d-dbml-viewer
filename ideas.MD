@@ -8,7 +8,7 @@
 8. [REMOVED] Bug where text disappears after Rearrange
 9. [X] Double click on table flies to in front of it
 10. [X] Clean up presentation on right 
-11. Render project names and descriptions from DBML `Project` blocks. Render project notes
+11. [X] Render project names and descriptions from DBML `Project` blocks. Render project notes
 12. [X] Explicitly check that `TablePartials` are supported in the load
 13. Check for `default`  values and render it in the table card (↩️)
 14. Render `checks` on the table card in a section (hovers on the name of the check to see the details revealed in the nav panel tooltip, with fields highlighted)
@@ -19,7 +19,7 @@
 19. Support for rendering `Enum` types in the table cards, showing the possible values with a special enum indicator
 20. Support for relationship settings (cascade, colours etc) in the side bar when a connection is selected
 21. Support markdown rendering in Notes
-22. Support TableGroup Notes.
+22. Support TableGroup Notes (on hover over Tablegroup name)
 23. Support Sticky notes (as floating notes in the space)
 24. `records` and table samples -- allow rendering from button in button, pops up as dismissable floating 3D dialog in front of user. 
 25.[X] Add a button "connection +/-" (press and hold to adjust) that allows  modifying the length of connections setting from the default (pack tables tighter or looser)
@@ -27,3 +27,5 @@
 27. [X] Make table titles get relatively bigger the further away they are, so what a table is stays legible even for distant tables (col font size stays proportionally small though)
 28. [X] When a table is brought into focus, the other tables rearrange themselves so that directly linked tables travel to be "nearby" (preferably in the same plane), and unrelated tables move further away. This allows users to focus on the relevant part of the diagram while still having a sense of the overall structure.
 29. [X] Double-click again on "sticky" table to stop it being the centre of the view. A table that is currently the sticky one, should have a glowing visual indicator around the table border.
+30. A Dockerfile for quick docker run (of built artefacts)
+31. When a table is selected as sticky (double-click), then only the table and its direct referenced tables should be opaque and other tables become much more (almost completely) transparent. Tables one hope away should be normally opaque. Tables 2 hops away should be 50% transparent. Tables more than 2 hops away should be 90% transparent. This allows users to focus on the relevant part of the diagram while still having a sense of the overall structure.
