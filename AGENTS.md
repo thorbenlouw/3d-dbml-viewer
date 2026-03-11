@@ -111,28 +111,28 @@ unit, not its private internals.
 - Screenshot assertions are opt-in and stored under `tests/visual/snapshots/`.
   Run with `--update-snapshots` intentionally, never automatically.
 
-#### WebGL rendering verification — mandatory use of Playwright MCP
+#### WebGL rendering verification — delegate to the human user
 
 **Headless Chromium cannot create a WebGL context.** `pnpm test:e2e` (headless)
 can only verify DOM structure; it cannot confirm that 3D boxes are actually
 visible on screen. A blank white canvas will pass the headless tests.
 
-For agent verification loops, run Playwright in headed mode:
-`pnpm test:e2e --headed`.
+**The agent is sandboxed and cannot launch headed browsers or use the
+Playwright MCP directly.** When headed E2E tests or visual WebGL verification
+are required, ask the human user to run them in a separate terminal and paste
+the output back into the chat.
 
-Whenever you implement or modify renderer components (`src/renderer/`), you
-**must** verify visual output using the Playwright MCP server:
+Whenever you implement or modify renderer components (`src/renderer/`) or
+visual/E2E tests, include a message like:
 
-1. Ensure the dev server is running (`pnpm dev`).
-2. Use the Playwright MCP `browser_navigate` + `browser_screenshot` tools to
-   open `http://localhost:5173` in a headed, GPU-enabled browser.
-3. Confirm in the screenshot that the expected 3D content is visible before
-   committing. Save the screenshot to `test-evidence/` as evidence.
+> Please run `pnpm test:e2e --headed` in your terminal and paste the output
+> here so I can verify the results.
 
-The Playwright MCP is configured in `~/.claude/settings.json` with
-`--headed --allowed-origins http://localhost:5173`. Do not skip this step —
-the opacity/distance calculation bug that made all boxes invisible on a white
-background was only caught by manual inspection, not by the automated tests.
+Wait for the user to provide the output before considering the work done.
+
+The opacity/distance calculation bug that made all boxes invisible on a white
+background was only caught by visual inspection — do not skip this step for
+renderer changes.
 
 ### Coverage
 
@@ -147,8 +147,8 @@ background was only caught by manual inspection, not by the automated tests.
 pnpm test              # unit + integration (watch mode in dev)
 pnpm test:run          # unit + integration (CI, single pass)
 pnpm test:coverage     # with coverage report
-pnpm test:e2e --headed     # Playwright browser tests for local/agent verification loops
-pnpm test:e2e              # Playwright browser tests (default; typically CI/headless)
+pnpm test:e2e              # Playwright browser tests (headless — DOM checks only)
+# pnpm test:e2e --headed   # Must be run by the human user; agent cannot launch headed browsers
 ```
 
 ---
