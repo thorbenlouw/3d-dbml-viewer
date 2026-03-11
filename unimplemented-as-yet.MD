@@ -6,7 +6,7 @@ This document is an audit of what is still missing relative to:
 - the backlog in `ideas.MD`
 - DBML capabilities that do not currently have first-class support in the app
 
-It is based on the current codebase as of `2026-03-10`.
+It is based on the current codebase as of `2026-03-11`.
 
 ## 1. PRD items not implemented yet
 
@@ -59,21 +59,6 @@ Functionally present:
 - image rendering
 - minimize/unminimize
 
-### Feature 17: View Filters for TableGroups and Reload Current File
-
-This feature is still unimplemented.
-
-Missing:
-
-- filtering visibility by `TableGroup`
-- synthetic `Ungrouped` group filter entry
-- independent show/hide toggle for `TableGroup` boundaries
-- reload button beside `Load file…`
-- reload of the current disk-backed file
-- reset of filters after reload
-- disabled/unavailable reload states and error handling for reload
-- dialog sections for group filters and boundary visibility
-
 ## 2. PRD items that may still be incomplete at the project/setup level
 
 ### Feature 00: Initial Project Setup
@@ -102,8 +87,8 @@ Items in `ideas.MD` that do not appear to be implemented yet:
 
 Notes on `ideas.MD` accuracy:
 
-- item 11 in `ideas.MD` says project names/descriptions should be rendered; that is now effectively implemented through `projectName` and `projectNote`
-- item 16 is marked done in `ideas.MD`, but the current implementation is hover-from-field driven relationship highlighting; I did not find a separate connection-hover workflow that highlights referenced table fields
+- item 11 is marked `[X]` — project name and project note are rendered via `ProjectNotesCard`
+- item 16 is marked `[X]` in `ideas.MD`, but the current implementation is hover-from-field driven relationship highlighting; no separate connection-hover workflow that highlights referenced table fields was found
 
 ## 4. DBML features with no first-class support yet
 
@@ -147,8 +132,6 @@ This section focuses on DBML features that are either not parsed into the app mo
 The biggest functional gaps are:
 
 - interactive field/table note panels
-- table-group-aware filtering and boundary toggling
-- reload-current-file workflow
 - first-class support for richer DBML metadata such as defaults, indexes, checks, enums, and named refs
 
 The biggest structural gap in DBML support is:
