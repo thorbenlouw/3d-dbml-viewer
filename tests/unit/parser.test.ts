@@ -19,6 +19,10 @@ const projectNoteBasicDbml = readFileSync(
   resolve(__dirname, '../fixtures/project-note-basic.dbml'),
   'utf-8',
 );
+const fieldDefaultsDbml = readFileSync(
+  resolve(__dirname, '../fixtures/field-defaults.dbml'),
+  'utf-8',
+);
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -208,6 +212,63 @@ describe('parseDatabaseSchema', () => {
     const schema = parseDatabaseSchema(dbml);
     const users = schema.tables.find((table) => table.name === 'users');
     expect(users?.tableGroup).toBeUndefined();
+  });
+
+  describe('field default extraction', () => {
+    it('returns undefined when a field has no default', () => {
+      const schema = parseDatabaseSchema(fieldDefaultsDbml);
+      const table = schema.tables.find((entry) => entry.name === 'field_defaults');
+      const plainText = table?.columns.find((column) => column.name === 'plain_text');
+      expect(plainText?.default).toBeUndefined();
+    });
+
+    it('extracts number defaults', () => {
+      const schema = parseDatabaseSchema(fieldDefaultsDbml);
+      const table = schema.tables.find((entry) => entry.name === 'field_defaults');
+      const column = table?.columns.find((entry) => entry.name === 'id');
+      expect(column?.default).toEqual({ type: 'number', value: '42' });
+    });
+
+    it('extracts string defaults', () => {
+      const schema = parseDatabaseSchema(fieldDefaultsDbml);
+      const table = schema.tables.find((entry) => entry.name === 'field_defaults');
+      const column = table?.columns.find((entry) => entry.name === 'status');
+      expect(column?.default).toEqual({ type: 'string', value: 'pending' });
+    });
+
+    it('extracts boolean defaults', () => {
+      const schema = parseDatabaseSchema(fieldDefaultsDbml);
+      const table = schema.tables.find((entry) => entry.name === 'field_defaults');
+      const column = table?.columns.find((entry) => entry.name === 'is_active');
+      expect(column?.default).toEqual({ type: 'boolean', value: 'true' });
+    });
+
+    it('extracts expression defaults', () => {
+      const schema = parseDatabaseSchema(fieldDefaultsDbml);
+      const table = schema.tables.find((entry) => entry.name === 'field_defaults');
+      const column = table?.columns.find((entry) => entry.name === 'created_at');
+      expect(column?.default).toEqual({ type: 'expression', value: 'now()' });
+    });
+
+    it('keeps defaults when a field also has other attributes', () => {
+      const dbml = `
+        Table tasks {
+          id int [pk]
+          status varchar [not null, unique, default: 'pending']
+        }
+      `;
+
+      const schema = parseDatabaseSchema(dbml);
+      const status = schema.tables[0]?.columns.find((column) => column.name === 'status');
+
+      expect(status).toMatchObject({
+        isPrimaryKey: false,
+        isForeignKey: false,
+        isNotNull: true,
+        isUnique: true,
+        default: { type: 'string', value: 'pending' },
+      });
+    });
   });
 
   describe('project name extraction', () => {

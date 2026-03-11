@@ -2,6 +2,8 @@ import { Parser } from '@dbml/core';
 import type {
   FilterState,
   ParsedColumn,
+  ParsedColumnDefault,
+  ParsedColumnDefaultType,
   ParsedRef,
   ParsedSchema,
   ParsedTableGroup,
@@ -15,6 +17,10 @@ interface DbmlField {
   unique?: boolean;
   not_null?: boolean;
   note?: string;
+  dbdefault?: {
+    type?: unknown;
+    value?: unknown;
+  };
   type?: {
     type_name?: string;
   };
@@ -127,6 +133,23 @@ function buildForeignKeyMap(schemas: DbmlSchema[]): Map<string, Set<string>> {
   return foreignKeyByTable;
 }
 
+function normalizeFieldDefault(dbdefault: DbmlField['dbdefault']): ParsedColumnDefault | undefined {
+  const defaultType = dbdefault?.type;
+  if (
+    defaultType !== 'number' &&
+    defaultType !== 'string' &&
+    defaultType !== 'boolean' &&
+    defaultType !== 'expression'
+  ) {
+    return undefined;
+  }
+
+  return {
+    type: defaultType as ParsedColumnDefaultType,
+    value: String(dbdefault?.value),
+  };
+}
+
 function mapColumns(table: DbmlTable, foreignKeys: Map<string, Set<string>>): ParsedColumn[] {
   const foreignKeyColumns = foreignKeys.get(table.name) ?? new Set<string>();
 
@@ -140,6 +163,7 @@ function mapColumns(table: DbmlTable, foreignKeys: Map<string, Set<string>>): Pa
       isNotNull: Boolean(field.not_null),
       isUnique: Boolean(field.unique),
       note: rawNote !== undefined && rawNote.length > 0 ? rawNote : undefined,
+      default: normalizeFieldDefault(field.dbdefault),
     };
   });
 }

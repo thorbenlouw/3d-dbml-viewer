@@ -1,3 +1,10 @@
+export type ParsedColumnDefaultType = 'number' | 'string' | 'boolean' | 'expression';
+
+export interface ParsedColumnDefault {
+  type: ParsedColumnDefaultType;
+  value: string;
+}
+
 export interface ParsedColumn {
   name: string;
   type: string;
@@ -6,6 +13,7 @@ export interface ParsedColumn {
   isNotNull: boolean;
   isUnique: boolean;
   note?: string;
+  default?: ParsedColumnDefault;
 }
 
 export interface ParsedTable {
@@ -104,6 +112,7 @@ export interface HoverContext {
     isNotNull: boolean;
     isUnique: boolean;
   };
+  columnDefault?: ParsedColumnDefault;
   referencedByFields?: string[];
   referencedByTables?: string[];
 }

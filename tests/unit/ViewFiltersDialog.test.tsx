@@ -1,25 +1,70 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import ViewFiltersDialog from '@/ui/ViewFiltersDialog';
-import type { FilterState, ParsedTable } from '@/types';
+import type { FilterState, ParsedTable, ParsedTableGroup } from '@/types';
 
 const TABLES: ParsedTable[] = [
-  { id: 'users', name: 'Users', columns: [{ name: 'id', type: 'int', isPrimaryKey: true, isForeignKey: false, isNotNull: true, isUnique: false }] },
+  {
+    id: 'users',
+    name: 'Users',
+    columns: [
+      {
+        name: 'id',
+        type: 'int',
+        isPrimaryKey: true,
+        isForeignKey: false,
+        isNotNull: true,
+        isUnique: false,
+      },
+    ],
+    tableGroup: 'core',
+  },
   {
     id: 'accounts',
     name: 'Accounts',
     columns: [
-      { name: 'id', type: 'int', isPrimaryKey: true, isForeignKey: false, isNotNull: true, isUnique: false },
-      { name: 'user_id', type: 'int', isPrimaryKey: false, isForeignKey: true, isNotNull: true, isUnique: false },
+      {
+        name: 'id',
+        type: 'int',
+        isPrimaryKey: true,
+        isForeignKey: false,
+        isNotNull: true,
+        isUnique: false,
+      },
+      {
+        name: 'user_id',
+        type: 'int',
+        isPrimaryKey: false,
+        isForeignKey: true,
+        isNotNull: true,
+        isUnique: false,
+      },
+    ],
+    tableGroup: 'core',
+  },
+  {
+    id: 'audit_log',
+    name: 'AuditLog',
+    columns: [
+      {
+        name: 'id',
+        type: 'int',
+        isPrimaryKey: true,
+        isForeignKey: false,
+        isNotNull: true,
+        isUnique: false,
+      },
     ],
   },
 ];
+
+const TABLE_GROUPS: ParsedTableGroup[] = [{ name: 'core' }];
 
 function makeFilterState(): FilterState {
   return {
     fieldDetailMode: 'full',
     visibleTableIds: new Set(TABLES.map((table) => table.id)),
-    visibleTableGroupIds: new Set(['__ungrouped__']),
+    visibleTableGroupIds: new Set(['core', '__ungrouped__']),
     showTableGroupBoundaries: false,
   };
 }
@@ -38,6 +83,7 @@ describe('ViewFiltersDialog', () => {
         filterState={makeFilterState()}
         setFilterState={setFilterState}
         tables={TABLES}
+        tableGroups={TABLE_GROUPS}
         onClose={vi.fn()}
       />,
     );
@@ -47,7 +93,7 @@ describe('ViewFiltersDialog', () => {
     expect(setFilterState).toHaveBeenCalledWith(
       expect.objectContaining({
         fieldDetailMode: 'ref-fields-only',
-        visibleTableIds: new Set(['users', 'accounts']),
+        visibleTableIds: new Set(['users', 'accounts', 'audit_log']),
       }),
     );
   });
@@ -61,6 +107,7 @@ describe('ViewFiltersDialog', () => {
         filterState={makeFilterState()}
         setFilterState={setFilterState}
         tables={TABLES}
+        tableGroups={TABLE_GROUPS}
         onClose={vi.fn()}
       />,
     );
@@ -70,7 +117,30 @@ describe('ViewFiltersDialog', () => {
     expect(setFilterState).toHaveBeenCalledWith(
       expect.objectContaining({
         fieldDetailMode: 'full',
-        visibleTableIds: new Set(['accounts']),
+        visibleTableIds: new Set(['accounts', 'audit_log']),
+      }),
+    );
+  });
+
+  it('calls setFilterState with updated visibleTableGroupIds when a table group is toggled', () => {
+    const setFilterState = vi.fn();
+
+    render(
+      <ViewFiltersDialog
+        isOpen
+        filterState={makeFilterState()}
+        setFilterState={setFilterState}
+        tables={TABLES}
+        tableGroups={TABLE_GROUPS}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText(/core/i));
+
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleTableGroupIds: new Set(['__ungrouped__']),
       }),
     );
   });
@@ -84,12 +154,13 @@ describe('ViewFiltersDialog', () => {
         filterState={makeFilterState()}
         setFilterState={vi.fn()}
         tables={TABLES}
+        tableGroups={TABLE_GROUPS}
         onClose={onClose}
       />,
     );
 
-    const labels = screen.getAllByText(/Accounts|Users/).map((node) => node.textContent);
-    expect(labels).toEqual(['Accounts', 'Users']);
+    const labels = screen.getAllByText(/Accounts|AuditLog|Users/).map((node) => node.textContent);
+    expect(labels).toEqual(['Accounts', 'AuditLog', 'Users']);
 
     fireEvent.keyDown(window, { key: 'Escape' });
 

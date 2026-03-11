@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from 'react';
 import type { ReferenceItem } from '@/types';
 import type { ReferencesForContext } from './hoverContext';
 import type { HoverContext } from '@/types';
+import { formatColumnDefaultValue } from './columnDefault';
 import {
   PANEL_ACCENT_COLOR,
   PANEL_BG_COLOR,
@@ -30,6 +31,11 @@ const LABEL_STYLE: CSSProperties = {
 const VALUE_STYLE: CSSProperties = {
   fontSize: '0.8rem',
   fontWeight: 400,
+};
+
+const CODE_VALUE_STYLE: CSSProperties = {
+  ...VALUE_STYLE,
+  fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
 };
 
 const ATTRIBUTE_BADGE_STYLE: CSSProperties = {
@@ -110,6 +116,9 @@ export default function NavigationPanel({
   projectName,
 }: NavigationPanelProps): ReactElement {
   const noteValue = hoverContext?.note?.trim() || null;
+  const defaultValue = hoverContext?.columnDefault
+    ? formatColumnDefaultValue(hoverContext.columnDefault)
+    : null;
 
   const attrs = hoverContext?.columnAttributes;
   const activeAttrs: AttributeEntry[] = attrs ? ALL_ATTRIBUTES.filter((a) => attrs[a.key]) : [];
@@ -174,6 +183,22 @@ export default function NavigationPanel({
                 <span>{attr.label}</span>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {hoverContext?.columnDefault && defaultValue && (
+        <section style={{ marginBottom: '0.85rem' }}>
+          <p style={LABEL_STYLE}>Default</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <p
+              data-testid="navigation-default-value"
+              style={
+                hoverContext.columnDefault.type === 'expression' ? CODE_VALUE_STYLE : VALUE_STYLE
+              }
+            >
+              {defaultValue} ({hoverContext.columnDefault.type})
+            </p>
           </div>
         </section>
       )}

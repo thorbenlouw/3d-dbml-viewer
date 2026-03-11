@@ -36,6 +36,7 @@ import {
   TITLE_SCALE_MAX,
 } from './constants';
 import { resolveTableHeaderColor } from './colorUtils';
+import { formatColumnDefaultLabel } from './columnDefault';
 import { getVisibleColumns } from './fieldDetailMode';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
@@ -57,6 +58,7 @@ interface FieldBadge {
 }
 
 const HIGHLIGHT_TEXT_COLOR = '#1f2937';
+const SECONDARY_TEXT_COLOR = '#A9BDD3';
 
 function truncate(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value;
@@ -95,6 +97,7 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
       isNotNull: column.isNotNull,
       isUnique: column.isUnique,
     },
+    columnDefault: column.default,
   };
 }
 
@@ -301,6 +304,13 @@ export default function TableCard({
         const badgeGroupRightX = dimensions.width / 2 - CARD_HORIZONTAL_PADDING;
         const badges = getBadges(column).filter((badge) => badge.active);
         const isHighlighted = highlightedColumn === column.name;
+        const defaultLabel = column.default ? formatColumnDefaultLabel(column.default) : undefined;
+        const badgeAreaWidth = badges.length * (BADGE_WIDTH + BADGE_GAP);
+        const noteBadgeWidth =
+          column.note !== undefined ? BADGE_WIDTH + (badges.length > 0 ? BADGE_GAP : 0) : 0;
+        const rightDecorationWidth = badgeAreaWidth + noteBadgeWidth;
+        const defaultRightX =
+          badgeGroupRightX - rightDecorationWidth - (rightDecorationWidth > 0 ? BADGE_GAP : 0);
 
         return (
           <group key={`${node.id}-${column.name}-${index}`}>
@@ -359,6 +369,20 @@ export default function TableCard({
             >
               {truncate(column.type, 20)}
             </Text>
+
+            {defaultLabel && (
+              <Text
+                font={SCENE_FONT_REGULAR}
+                color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : SECONDARY_TEXT_COLOR}
+                fontSize={TEXT_ROW_SIZE * 0.9}
+                position={[defaultRightX, rowY, dimensions.depth / 2 + 0.02]}
+                anchorX="right"
+                anchorY="middle"
+                maxWidth={dimensions.width * 0.26}
+              >
+                {truncate(defaultLabel, 22)}
+              </Text>
+            )}
 
             {badges.map((badge, badgeIndex) => {
               const offsetFromRight = badgeIndex * (BADGE_WIDTH + BADGE_GAP);

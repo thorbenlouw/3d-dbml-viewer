@@ -62,10 +62,7 @@ export default function ViewFiltersDialog({
     [tableGroups],
   );
 
-  const ungroupedCount = useMemo(
-    () => tables.filter((t) => !t.tableGroup).length,
-    [tables],
-  );
+  const ungroupedCount = useMemo(() => tables.filter((t) => !t.tableGroup).length, [tables]);
 
   const groupTableCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -122,7 +119,12 @@ export default function ViewFiltersDialog({
               Choose how much table detail to render and which tables stay visible.
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close view filters" style={BUTTON_STYLE}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close view filters"
+            style={BUTTON_STYLE}
+          >
             x
           </button>
         </div>
@@ -156,9 +158,7 @@ export default function ViewFiltersDialog({
                       alignItems: 'center',
                       gap: '0.5rem',
                       borderRadius: '999px',
-                      border: checked
-                        ? '1px solid #38bdf8'
-                        : '1px solid rgba(148, 163, 184, 0.24)',
+                      border: checked ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.24)',
                       background: checked ? 'rgba(14, 165, 233, 0.16)' : '#132238',
                       padding: '0.6rem 0.9rem',
                       cursor: 'pointer',
@@ -240,8 +240,9 @@ export default function ViewFiltersDialog({
                 {sortedGroups.map((group, index) => {
                   const checked = filterState.visibleTableGroupIds.has(group.name);
                   const count = groupTableCounts.get(group.name) ?? 0;
+                  const inputId = `view-filters-group-${group.name}`;
                   return (
-                    <label
+                    <div
                       key={group.name}
                       style={{
                         display: 'flex',
@@ -250,13 +251,20 @@ export default function ViewFiltersDialog({
                         gap: '1rem',
                         padding: '0.8rem 0.9rem',
                         borderTop: index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
-                        cursor: 'pointer',
                       }}
                     >
-                      <span
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.7rem' }}
+                      <label
+                        htmlFor={inputId}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.7rem',
+                          cursor: 'pointer',
+                          flex: 1,
+                        }}
                       >
                         <input
+                          id={inputId}
                           type="checkbox"
                           checked={checked}
                           onChange={() => {
@@ -270,15 +278,15 @@ export default function ViewFiltersDialog({
                           }}
                         />
                         <span>{group.name}</span>
-                      </span>
+                      </label>
                       <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                         {count} {count === 1 ? 'table' : 'tables'}
                       </span>
-                    </label>
+                    </div>
                   );
                 })}
                 {ungroupedCount > 0 && (
-                  <label
+                  <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -286,16 +294,21 @@ export default function ViewFiltersDialog({
                       gap: '1rem',
                       padding: '0.8rem 0.9rem',
                       borderTop:
-                        sortedGroups.length > 0
-                          ? '1px solid rgba(148, 163, 184, 0.12)'
-                          : 'none',
-                      cursor: 'pointer',
+                        sortedGroups.length > 0 ? '1px solid rgba(148, 163, 184, 0.12)' : 'none',
                     }}
                   >
-                    <span
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.7rem' }}
+                    <label
+                      htmlFor="view-filters-group-ungrouped"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.7rem',
+                        cursor: 'pointer',
+                        flex: 1,
+                      }}
                     >
                       <input
+                        id="view-filters-group-ungrouped"
                         type="checkbox"
                         checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
                         onChange={() => {
@@ -309,11 +322,11 @@ export default function ViewFiltersDialog({
                         }}
                       />
                       <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Ungrouped</span>
-                    </span>
+                    </label>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                       {ungroupedCount} {ungroupedCount === 1 ? 'table' : 'tables'}
                     </span>
-                  </label>
+                  </div>
                 )}
               </div>
 
@@ -397,9 +410,10 @@ export default function ViewFiltersDialog({
             >
               {sortedTables.map((table, index) => {
                 const checked = filterState.visibleTableIds.has(table.id);
+                const inputId = `view-filters-table-${table.id}`;
 
                 return (
-                  <label
+                  <div
                     key={table.id}
                     style={{
                       display: 'flex',
@@ -407,13 +421,21 @@ export default function ViewFiltersDialog({
                       justifyContent: 'space-between',
                       gap: '1rem',
                       padding: '0.8rem 0.9rem',
-                      borderTop:
-                        index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
-                      cursor: 'pointer',
+                      borderTop: index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
                     }}
                   >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.7rem' }}>
+                    <label
+                      htmlFor={inputId}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.7rem',
+                        cursor: 'pointer',
+                        flex: 1,
+                      }}
+                    >
                       <input
+                        id={inputId}
                         type="checkbox"
                         checked={checked}
                         onChange={() => {
@@ -431,11 +453,11 @@ export default function ViewFiltersDialog({
                         }}
                       />
                       <span>{table.name}</span>
-                    </span>
+                    </label>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                       {table.columns.length} fields
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>

@@ -1,0 +1,8 @@
+Table field_defaults {
+  id int [pk, default: 42]
+  status varchar [default: 'pending']
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  checksum varchar [default: `sha256(concat_ws(':', tenant_id, user_id, created_at, status))`]
+  plain_text varchar
+}
