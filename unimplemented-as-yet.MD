@@ -42,23 +42,6 @@ Current behavior:
 - labels are built from `tableGroup.name` when a table group exists, not from DBML schema namespace
 - this means the intended `schema.table.field` requirement is not satisfied
 
-### Feature 14: Project Notes Panel
-
-The user-facing feature exists, but one architectural part of the PRD is still only partially matched.
-
-Divergence from PRD:
-
-- the PRD describes an in-scene / scene-composed notes panel
-- the current implementation is a DOM overlay panel (`ProjectNotesCard`), not a 3D scene object
-
-Functionally present:
-
-- project name extraction
-- project note extraction
-- sanitized Markdown rendering
-- image rendering
-- minimize/unminimize
-
 ## 2. PRD items that may still be incomplete at the project/setup level
 
 ### Feature 00: Initial Project Setup

@@ -1,9 +1,16 @@
-# PRD: Project Notes Panel in 3D Scene
+# PRD: Project Notes Panel
+
+> **Implementation note:** The original spec described an in-scene 3D panel.
+> After implementation, a DOM overlay approach was chosen instead and accepted
+> as the deliberate architecture. See
+> [ADR-001](../../docs/adr/ADR-001-project-notes-dom-overlay.md) for the full
+> rationale. The success criteria and acceptance tests below remain valid; only
+> the rendering layer differs from the original description.
 
 ## Problem
 
 DBML `Project` metadata can include a `Note`, but this high-level context is
-not currently surfaced inside the 3D scene. Users lose important schema-wide
+not currently surfaced in the viewer. Users lose important schema-wide
 documentation unless they inspect source DBML directly.
 
 For larger schemas, always showing long project notes can also consume too much
@@ -11,10 +18,10 @@ screen space.
 
 ## Goal
 
-When a DBML `Project` node exists and has a `Note`, render a TableCard-like
-panel in the scene (with distinct styling) that displays the project note as
-Markdown, including embedded images. The panel must support minimize/unminimize
-to preserve space.
+When a DBML `Project` node exists and has a `Note`, render a panel that
+displays the project note as Markdown, including embedded images. The panel
+must support minimize/unminimize to preserve space. The panel is implemented
+as a DOM overlay (`ProjectNotesCard`), not a 3D scene object — see ADR-001.
 
 ## Success Criteria
 
@@ -84,10 +91,12 @@ to preserve space.
 
 ### Renderer Architecture
 
-1. Add `ProjectNotesCard` (TableCard-like but separate component).
-2. Integrate component in scene render pass when `projectNote` exists.
-3. Add local UI state for minimized/expanded status.
+1. `ProjectNotesCard` is a DOM overlay component rendered outside `<Canvas>`.
+2. `App` passes `projectName` and `projectNote` from parsed schema state.
+3. Component holds local UI state for minimized/expanded status.
 4. Render Markdown via vetted markdown renderer stack and sanitized output.
+
+See ADR-001 for why the DOM overlay approach was chosen over an in-scene 3D object.
 
 ### Markdown and Security
 
@@ -109,9 +118,7 @@ to preserve space.
    - Mitigation: bounded panel dimensions + internal scrolling + image max size.
 3. Scene clutter with another persistent panel.
    - Mitigation: minimized mode and compact default footprint.
-4. Rendering mismatch between DOM overlays and 3D billboarding.
-   - Mitigation: choose a single rendering strategy and test interaction edge
-     cases (hover, focus, camera movement).
+4. Rendering strategy: resolved by ADR-001 — DOM overlay is the accepted approach.
 
 ## Acceptance Tests
 
