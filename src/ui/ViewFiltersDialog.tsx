@@ -1,4 +1,5 @@
 import { useEffect, useMemo, type CSSProperties, type ReactElement } from 'react';
+import { flushSync } from 'react-dom';
 import type { FilterState, ParsedTable, ParsedTableGroup } from '@/types';
 
 interface ViewFiltersDialogProps {
@@ -42,6 +43,20 @@ const BUTTON_STYLE: CSSProperties = {
   font: 'inherit',
 };
 
+const CHECKBOX_CONTROL_STYLE: CSSProperties = {
+  width: '1rem',
+  height: '1rem',
+  borderRadius: '0.2rem',
+  border: '1px solid rgba(148, 163, 184, 0.5)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '0.75rem',
+  lineHeight: 1,
+  userSelect: 'none',
+  flexShrink: 0,
+};
+
 export default function ViewFiltersDialog({
   isOpen,
   filterState,
@@ -50,6 +65,12 @@ export default function ViewFiltersDialog({
   tableGroups,
   onClose,
 }: ViewFiltersDialogProps): ReactElement | null {
+  function commitFilterState(nextFilterState: FilterState): void {
+    flushSync(() => {
+      setFilterState(nextFilterState);
+    });
+  }
+
   const sortedTables = useMemo(
     () => [...tables].sort((a, b) => a.name.localeCompare(b.name)),
     [tables],
@@ -170,7 +191,7 @@ export default function ViewFiltersDialog({
                       value={value}
                       checked={checked}
                       onChange={() =>
-                        setFilterState({
+                        commitFilterState({
                           ...filterState,
                           fieldDetailMode: value as FilterState['fieldDetailMode'],
                         })
@@ -207,7 +228,7 @@ export default function ViewFiltersDialog({
                     onClick={() => {
                       const allGroupIds = new Set<string>(sortedGroups.map((g) => g.name));
                       if (ungroupedCount > 0) allGroupIds.add('__ungrouped__');
-                      setFilterState({ ...filterState, visibleTableGroupIds: allGroupIds });
+                      commitFilterState({ ...filterState, visibleTableGroupIds: allGroupIds });
                     }}
                   >
                     Select All
@@ -216,7 +237,7 @@ export default function ViewFiltersDialog({
                     type="button"
                     style={BUTTON_STYLE}
                     onClick={() =>
-                      setFilterState({
+                      commitFilterState({
                         ...filterState,
                         visibleTableGroupIds: new Set<string>(),
                       })
@@ -240,7 +261,6 @@ export default function ViewFiltersDialog({
                 {sortedGroups.map((group, index) => {
                   const checked = filterState.visibleTableGroupIds.has(group.name);
                   const count = groupTableCounts.get(group.name) ?? 0;
-                  const inputId = `view-filters-group-${group.name}`;
                   return (
                     <div
                       key={group.name}
@@ -253,32 +273,38 @@ export default function ViewFiltersDialog({
                         borderTop: index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
                       }}
                     >
-                      <label
-                        htmlFor={inputId}
+                      <div
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.7rem',
-                          cursor: 'pointer',
                           flex: 1,
                         }}
                       >
-                        <input
-                          id={inputId}
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={checked}
+                          aria-label={group.name}
+                          onClick={() => {
                             const next = new Set(filterState.visibleTableGroupIds);
                             if (checked) {
                               next.delete(group.name);
                             } else {
                               next.add(group.name);
                             }
-                            setFilterState({ ...filterState, visibleTableGroupIds: next });
+                            commitFilterState({ ...filterState, visibleTableGroupIds: next });
                           }}
-                        />
+                          style={{
+                            ...CHECKBOX_CONTROL_STYLE,
+                            background: checked ? '#38bdf8' : 'transparent',
+                            color: checked ? '#0f172a' : 'transparent',
+                          }}
+                        >
+                          ✓
+                        </button>
                         <span>{group.name}</span>
-                      </label>
+                      </div>
                       <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                         {count} {count === 1 ? 'table' : 'tables'}
                       </span>
@@ -297,32 +323,42 @@ export default function ViewFiltersDialog({
                         sortedGroups.length > 0 ? '1px solid rgba(148, 163, 184, 0.12)' : 'none',
                     }}
                   >
-                    <label
-                      htmlFor="view-filters-group-ungrouped"
+                    <div
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.7rem',
-                        cursor: 'pointer',
                         flex: 1,
                       }}
                     >
-                      <input
-                        id="view-filters-group-ungrouped"
-                        type="checkbox"
-                        checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
-                        onChange={() => {
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
+                        aria-label="Ungrouped"
+                        onClick={() => {
                           const next = new Set(filterState.visibleTableGroupIds);
                           if (next.has('__ungrouped__')) {
                             next.delete('__ungrouped__');
                           } else {
                             next.add('__ungrouped__');
                           }
-                          setFilterState({ ...filterState, visibleTableGroupIds: next });
+                          commitFilterState({ ...filterState, visibleTableGroupIds: next });
                         }}
-                      />
+                        style={{
+                          ...CHECKBOX_CONTROL_STYLE,
+                          background: filterState.visibleTableGroupIds.has('__ungrouped__')
+                            ? '#38bdf8'
+                            : 'transparent',
+                          color: filterState.visibleTableGroupIds.has('__ungrouped__')
+                            ? '#0f172a'
+                            : 'transparent',
+                        }}
+                      >
+                        ✓
+                      </button>
                       <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Ungrouped</span>
-                    </label>
+                    </div>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                       {ungroupedCount} {ungroupedCount === 1 ? 'table' : 'tables'}
                     </span>
@@ -344,7 +380,7 @@ export default function ViewFiltersDialog({
                   type="checkbox"
                   checked={filterState.showTableGroupBoundaries}
                   onChange={() =>
-                    setFilterState({
+                    commitFilterState({
                       ...filterState,
                       showTableGroupBoundaries: !filterState.showTableGroupBoundaries,
                     })
@@ -376,7 +412,7 @@ export default function ViewFiltersDialog({
                   type="button"
                   style={BUTTON_STYLE}
                   onClick={() =>
-                    setFilterState({
+                    commitFilterState({
                       ...filterState,
                       visibleTableIds: new Set(allTableIds),
                     })
@@ -388,7 +424,7 @@ export default function ViewFiltersDialog({
                   type="button"
                   style={BUTTON_STYLE}
                   onClick={() =>
-                    setFilterState({
+                    commitFilterState({
                       ...filterState,
                       visibleTableIds: new Set<string>(),
                     })
@@ -410,7 +446,6 @@ export default function ViewFiltersDialog({
             >
               {sortedTables.map((table, index) => {
                 const checked = filterState.visibleTableIds.has(table.id);
-                const inputId = `view-filters-table-${table.id}`;
 
                 return (
                   <div
@@ -424,21 +459,20 @@ export default function ViewFiltersDialog({
                       borderTop: index === 0 ? 'none' : '1px solid rgba(148, 163, 184, 0.12)',
                     }}
                   >
-                    <label
-                      htmlFor={inputId}
+                    <div
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.7rem',
-                        cursor: 'pointer',
                         flex: 1,
                       }}
                     >
-                      <input
-                        id={inputId}
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        aria-label={table.name}
+                        onClick={() => {
                           const nextVisible = new Set(filterState.visibleTableIds);
                           if (checked) {
                             nextVisible.delete(table.id);
@@ -446,14 +480,21 @@ export default function ViewFiltersDialog({
                             nextVisible.add(table.id);
                           }
 
-                          setFilterState({
+                          commitFilterState({
                             ...filterState,
                             visibleTableIds: nextVisible,
                           });
                         }}
-                      />
+                        style={{
+                          ...CHECKBOX_CONTROL_STYLE,
+                          background: checked ? '#38bdf8' : 'transparent',
+                          color: checked ? '#0f172a' : 'transparent',
+                        }}
+                      >
+                        ✓
+                      </button>
                       <span>{table.name}</span>
-                    </label>
+                    </div>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
                       {table.columns.length} fields
                     </span>

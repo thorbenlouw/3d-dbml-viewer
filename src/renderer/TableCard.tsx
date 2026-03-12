@@ -68,6 +68,7 @@ function truncate(value: string, maxChars: number): string {
 
 function getBadges(column: ParsedColumn): FieldBadge[] {
   return [
+    { label: 'E', active: column.enumValues !== undefined },
     { label: '🔑', active: column.isPrimaryKey },
     { label: '🔗', active: column.isForeignKey },
     { label: '❗', active: column.isNotNull },
@@ -98,6 +99,7 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
       isUnique: column.isUnique,
     },
     columnDefault: column.default,
+    enumValues: column.enumValues,
   };
 }
 

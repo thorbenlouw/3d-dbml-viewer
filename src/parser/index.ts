@@ -4,6 +4,8 @@ import type {
   ParsedColumn,
   ParsedColumnDefault,
   ParsedColumnDefaultType,
+  ParsedEnum,
+  ParsedEnumValue,
   ParsedRef,
   ParsedSchema,
   ParsedTableGroup,
@@ -58,10 +60,21 @@ interface DbmlTableGroup {
   color?: string;
 }
 
+interface DbmlEnumValue {
+  name: string;
+  note?: string | null;
+}
+
+interface DbmlEnum {
+  name: string;
+  values: DbmlEnumValue[];
+}
+
 interface DbmlSchema {
   tables: DbmlTable[];
   refs: DbmlRef[];
   tableGroups?: DbmlTableGroup[];
+  enums?: DbmlEnum[];
 }
 
 interface DbmlDatabase {
@@ -150,11 +163,35 @@ function normalizeFieldDefault(dbdefault: DbmlField['dbdefault']): ParsedColumnD
   };
 }
 
-function mapColumns(table: DbmlTable, foreignKeys: Map<string, Set<string>>): ParsedColumn[] {
+function normalizeEnumValue(value: DbmlEnumValue): ParsedEnumValue {
+  const rawNote = value.note?.trim();
+  return {
+    name: value.name,
+    note: rawNote !== undefined && rawNote.length > 0 ? rawNote : undefined,
+  };
+}
+
+function extractEnums(schema: DbmlSchema): ParsedEnum[] {
+  return (schema.enums ?? []).map((entry) => ({
+    name: entry.name,
+    values: entry.values.map(normalizeEnumValue),
+  }));
+}
+
+function buildEnumMap(schema: DbmlSchema): Map<string, ParsedEnumValue[]> {
+  return new Map(extractEnums(schema).map((entry) => [entry.name, entry.values]));
+}
+
+function mapColumns(
+  table: DbmlTable,
+  foreignKeys: Map<string, Set<string>>,
+  enumMap: Map<string, ParsedEnumValue[]>,
+): ParsedColumn[] {
   const foreignKeyColumns = foreignKeys.get(table.name) ?? new Set<string>();
 
   return table.fields.map((field) => {
     const rawNote = field.note?.trim();
+    const enumValues = field.type?.type_name ? enumMap.get(field.type.type_name) : undefined;
     return {
       name: field.name,
       type: field.type?.type_name ?? 'unknown',
@@ -164,6 +201,7 @@ function mapColumns(table: DbmlTable, foreignKeys: Map<string, Set<string>>): Pa
       isUnique: Boolean(field.unique),
       note: rawNote !== undefined && rawNote.length > 0 ? rawNote : undefined,
       default: normalizeFieldDefault(field.dbdefault),
+      enumValues,
     };
   });
 }
@@ -236,19 +274,21 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
   }
 
   const foreignKeys = buildForeignKeyMap(database.schemas);
-  const tables = database.schemas.flatMap((schema) =>
-    schema.tables.map((table) => {
+  const enums = database.schemas.flatMap((schema) => extractEnums(schema));
+  const tables = database.schemas.flatMap((schema) => {
+    const enumMap = buildEnumMap(schema);
+    return schema.tables.map((table) => {
       const rawTableNote = table.note?.trim();
       return {
         id: table.name,
         name: table.name,
-        columns: mapColumns(table, foreignKeys),
+        columns: mapColumns(table, foreignKeys, enumMap),
         note: rawTableNote !== undefined && rawTableNote.length > 0 ? rawTableNote : undefined,
         tableGroup: getTableGroupName(table),
         headerColor: resolveTableHeaderColor(table),
       };
-    }),
-  );
+    });
+  });
 
   const refs = mapRefs(database.schemas);
   const tableGroups = extractTableGroups(database.schemas);
@@ -261,5 +301,12 @@ export function parseDatabaseSchema(dbml: string): ParsedSchema {
   const projectNote =
     rawProjectNote !== undefined && rawProjectNote.length > 0 ? rawProjectNote : undefined;
 
-  return { tables, refs, projectName, projectNote, tableGroups };
+  return {
+    tables,
+    refs,
+    enums: enums.length > 0 ? enums : undefined,
+    projectName,
+    projectNote,
+    tableGroups,
+  };
 }

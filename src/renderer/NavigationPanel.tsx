@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
 import type { ReferenceItem } from '@/types';
 import type { ReferencesForContext } from './hoverContext';
-import type { HoverContext } from '@/types';
+import type { HoverContext, ParsedEnumValue } from '@/types';
 import { formatColumnDefaultValue } from './columnDefault';
 import {
   PANEL_ACCENT_COLOR,
@@ -110,6 +110,19 @@ function ReferenceList({ items }: { items: ReferenceItem[] }): ReactElement {
   );
 }
 
+function EnumValueList({ values }: { values: ParsedEnumValue[] }): ReactElement {
+  return (
+    <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.3rem' }}>
+      {values.map((value) => (
+        <li key={value.name} style={VALUE_STYLE}>
+          <span>{value.name}</span>
+          {value.note ? <span style={{ opacity: 0.72 }}> - {value.note}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function NavigationPanel({
   hoverContext,
   references,
@@ -202,6 +215,17 @@ export default function NavigationPanel({
           </div>
         </section>
       )}
+
+      {hoverContext?.enumValues?.length ? (
+        <section style={{ marginBottom: '0.85rem' }}>
+          <p style={LABEL_STYLE}>Enum Values</p>
+          <div style={SECTION_PANEL_STYLE}>
+            <div data-testid="navigation-enum-values">
+              <EnumValueList values={hoverContext.enumValues} />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {references?.items.length ? (
         <section style={{ marginBottom: '0.85rem' }}>

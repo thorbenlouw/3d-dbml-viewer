@@ -23,6 +23,10 @@ const fieldDefaultsDbml = readFileSync(
   resolve(__dirname, '../fixtures/field-defaults.dbml'),
   'utf-8',
 );
+const enumRenderingDbml = readFileSync(
+  resolve(__dirname, '../fixtures/enum-rendering.dbml'),
+  'utf-8',
+);
 
 function findTable(tableName: string) {
   const schema = parseDatabaseSchema(HARD_CODED_DBML);
@@ -267,6 +271,97 @@ describe('parseDatabaseSchema', () => {
         isNotNull: true,
         isUnique: true,
         default: { type: 'string', value: 'pending' },
+      });
+    });
+  });
+
+  describe('enum extraction', () => {
+    it('returns undefined for schema.enums when the DBML has no enums', () => {
+      const dbml = `
+        Table users {
+          id integer [pk]
+          role varchar
+        }
+      `;
+
+      const schema = parseDatabaseSchema(dbml);
+
+      expect(schema.enums).toBeUndefined();
+      expect(schema.tables[0]?.columns[1]?.enumValues).toBeUndefined();
+    });
+
+    it('extracts enum declarations into schema.enums', () => {
+      const schema = parseDatabaseSchema(enumRenderingDbml);
+
+      expect(schema.enums).toEqual([
+        {
+          name: 'order_status',
+          values: [
+            { name: 'pending', note: 'Order received but not yet processed' },
+            { name: 'confirmed' },
+            { name: 'shipped' },
+          ],
+        },
+        {
+          name: 'priority_level',
+          values: [{ name: 'low' }, { name: 'medium' }, { name: 'high' }],
+        },
+        {
+          name: 'audit_event',
+          values: [
+            { name: 'created' },
+            { name: 'updated' },
+            { name: 'deleted' },
+            { name: 'restored' },
+            { name: 'archived' },
+            { name: 'unarchived' },
+            { name: 'emailed' },
+            { name: 'downloaded' },
+            { name: 'shared' },
+            { name: 'exported' },
+            { name: 'printed' },
+            { name: 'approved' },
+            { name: 'rejected' },
+            { name: 'submitted' },
+            { name: 'synced' },
+            { name: 'queued' },
+            { name: 'retried' },
+            { name: 'cancelled' },
+            { name: 'expired' },
+            { name: 'reopened' },
+          ],
+        },
+      ]);
+    });
+
+    it('populates enumValues when a column type matches a declared enum', () => {
+      const schema = parseDatabaseSchema(enumRenderingDbml);
+      const orders = schema.tables.find((table) => table.name === 'orders');
+      const status = orders?.columns.find((column) => column.name === 'status');
+
+      expect(status?.enumValues).toEqual([
+        { name: 'pending', note: 'Order received but not yet processed' },
+        { name: 'confirmed' },
+        { name: 'shipped' },
+      ]);
+    });
+
+    it('keeps enumValues undefined when a column type matches no declared enum', () => {
+      const schema = parseDatabaseSchema(enumRenderingDbml);
+      const orders = schema.tables.find((table) => table.name === 'orders');
+      const externalStatus = orders?.columns.find((column) => column.name === 'external_status');
+
+      expect(externalStatus?.enumValues).toBeUndefined();
+    });
+
+    it('preserves enum value notes on matched columns', () => {
+      const schema = parseDatabaseSchema(enumRenderingDbml);
+      const orders = schema.tables.find((table) => table.name === 'orders');
+      const status = orders?.columns.find((column) => column.name === 'status');
+
+      expect(status?.enumValues?.[0]).toEqual({
+        name: 'pending',
+        note: 'Order received but not yet processed',
       });
     });
   });

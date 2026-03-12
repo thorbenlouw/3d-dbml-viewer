@@ -1,0 +1,42 @@
+Enum order_status {
+  pending [note: 'Order received but not yet processed']
+  confirmed
+  shipped
+}
+
+Enum priority_level {
+  low
+  medium
+  high
+}
+
+Enum audit_event {
+  created
+  updated
+  deleted
+  restored
+  archived
+  unarchived
+  emailed
+  downloaded
+  shared
+  exported
+  printed
+  approved
+  rejected
+  submitted
+  synced
+  queued
+  retried
+  cancelled
+  expired
+  reopened
+}
+
+Table orders {
+  id int [pk]
+  status order_status [not null]
+  priority priority_level
+  audit_type audit_event
+  external_status varchar
+}

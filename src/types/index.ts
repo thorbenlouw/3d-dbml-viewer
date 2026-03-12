@@ -5,6 +5,16 @@ export interface ParsedColumnDefault {
   value: string;
 }
 
+export interface ParsedEnumValue {
+  name: string;
+  note?: string;
+}
+
+export interface ParsedEnum {
+  name: string;
+  values: ParsedEnumValue[];
+}
+
 export interface ParsedColumn {
   name: string;
   type: string;
@@ -14,6 +24,7 @@ export interface ParsedColumn {
   isUnique: boolean;
   note?: string;
   default?: ParsedColumnDefault;
+  enumValues?: ParsedEnumValue[];
 }
 
 export interface ParsedTable {
@@ -49,6 +60,7 @@ export interface ReferenceItem {
 export interface ParsedSchema {
   tables: ParsedTable[];
   refs: ParsedRef[];
+  enums?: ParsedEnum[];
   projectName?: string;
   projectNote?: string;
   tableGroups?: ParsedTableGroup[];
@@ -113,6 +125,7 @@ export interface HoverContext {
     isUnique: boolean;
   };
   columnDefault?: ParsedColumnDefault;
+  enumValues?: ParsedEnumValue[];
   referencedByFields?: string[];
   referencedByTables?: string[];
 }

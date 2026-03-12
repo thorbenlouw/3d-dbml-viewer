@@ -38,7 +38,7 @@ export function estimateTableCardDimensions(
     ...visibleColumns.map((column) => estimateTextWidth(column.type)),
     0,
   );
-  const badgeWidth = BADGE_WIDTH * 4 + BADGE_GAP * 3;
+  const badgeWidth = BADGE_WIDTH * 5 + BADGE_GAP * 4;
   const innerWidth =
     Math.max(
       estimateTextWidth(table.name),
@@ -48,8 +48,7 @@ export function estimateTableCardDimensions(
 
   const width = clamp(innerWidth, CARD_MIN_WIDTH, CARD_MAX_WIDTH);
   const rowCount = visibleColumns.length;
-  const bodyHeight =
-    rowCount === 0 ? 0 : rowCount * CARD_ROW_HEIGHT + CARD_VERTICAL_PADDING * 2;
+  const bodyHeight = rowCount === 0 ? 0 : rowCount * CARD_ROW_HEIGHT + CARD_VERTICAL_PADDING * 2;
 
   return {
     width,

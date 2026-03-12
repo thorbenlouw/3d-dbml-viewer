@@ -122,6 +122,29 @@ describe('ViewFiltersDialog', () => {
     );
   });
 
+  it('calls setFilterState when the checkbox itself is clicked directly', () => {
+    const setFilterState = vi.fn();
+
+    render(
+      <ViewFiltersDialog
+        isOpen
+        filterState={makeFilterState()}
+        setFilterState={setFilterState}
+        tables={TABLES}
+        tableGroups={TABLE_GROUPS}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /users/i }));
+
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleTableIds: new Set(['accounts', 'audit_log']),
+      }),
+    );
+  });
+
   it('calls setFilterState with updated visibleTableGroupIds when a table group is toggled', () => {
     const setFilterState = vi.fn();
 
@@ -137,6 +160,52 @@ describe('ViewFiltersDialog', () => {
     );
 
     fireEvent.click(screen.getByLabelText(/core/i));
+
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleTableGroupIds: new Set(['__ungrouped__']),
+      }),
+    );
+  });
+
+  it('calls setFilterState when the ungrouped checkbox itself is clicked directly', () => {
+    const setFilterState = vi.fn();
+
+    render(
+      <ViewFiltersDialog
+        isOpen
+        filterState={makeFilterState()}
+        setFilterState={setFilterState}
+        tables={TABLES}
+        tableGroups={TABLE_GROUPS}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /ungrouped/i }));
+
+    expect(setFilterState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleTableGroupIds: new Set(['core']),
+      }),
+    );
+  });
+
+  it('calls setFilterState when a table-group checkbox itself is clicked directly', () => {
+    const setFilterState = vi.fn();
+
+    render(
+      <ViewFiltersDialog
+        isOpen
+        filterState={makeFilterState()}
+        setFilterState={setFilterState}
+        tables={TABLES}
+        tableGroups={TABLE_GROUPS}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /core/i }));
 
     expect(setFilterState).toHaveBeenCalledWith(
       expect.objectContaining({
