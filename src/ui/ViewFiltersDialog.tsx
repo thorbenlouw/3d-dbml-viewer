@@ -1,5 +1,4 @@
 import { useEffect, useMemo, type CSSProperties, type ReactElement } from 'react';
-import { flushSync } from 'react-dom';
 import type { FilterState, ParsedTable, ParsedTableGroup } from '@/types';
 
 interface ViewFiltersDialogProps {
@@ -66,9 +65,7 @@ export default function ViewFiltersDialog({
   onClose,
 }: ViewFiltersDialogProps): ReactElement | null {
   function commitFilterState(nextFilterState: FilterState): void {
-    flushSync(() => {
-      setFilterState(nextFilterState);
-    });
+    setFilterState(nextFilterState);
   }
 
   const sortedTables = useMemo(

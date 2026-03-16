@@ -68,6 +68,36 @@ Key packages:
 
 ---
 
+## Code Search Tools
+
+`ast-grep` is installed and available via Bash. Use it for structural code
+searches where text matching is fragile — e.g. finding all call sites of a
+function regardless of formatting, detecting anti-patterns, or preparing
+codemods.
+
+Prefer `ast-grep` over `grep`/Grep when:
+
+- The pattern spans multiple lines or involves nesting (e.g. JSX props,
+  callback shapes)
+- You need to match by syntax role rather than text (e.g. "all arrow functions
+  returned from `useMemo`")
+- You're auditing API usage across the codebase (e.g. every `useFrame` call,
+  every `new BufferGeometry()`)
+
+Example:
+
+```bash
+# Find all useFrame hooks
+ast-grep --pattern 'useFrame($$$)' --lang tsx
+
+# Find Three.js geometry constructors (to audit disposal)
+ast-grep --pattern 'new $TYPE($$$)' --lang tsx src/renderer/
+```
+
+Continue using the built-in Grep tool for simple text/regex searches.
+
+---
+
 ## Testing
 
 ### Philosophy
