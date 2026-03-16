@@ -70,6 +70,15 @@ export const NON_STICKY_LINK_DISTANCE_MULTIPLIER = 1.12;
 export const STICKY_BORDER_COLOR = '#FFA726';
 export const STICKY_BORDER_GLOW_OPACITY = 0.75;
 
+// Hop-based opacity constants — used when a sticky table is active.
+// HOP_OPACITY_0 / _1 keep the focal cluster fully visible;
+// _2 and _FAR progressively dim distant tables.
+export const HOP_OPACITY_0 = 0.95; // sticky table itself
+export const HOP_OPACITY_1 = 0.95; // direct neighbours (1 hop)
+export const HOP_OPACITY_2 = 0.5; // 2 hops away
+export const HOP_OPACITY_FAR = 0.1; // 3+ hops away
+export const HOP_OPACITY_LERP_SPEED = 0.08; // per-frame lerp factor for smooth transitions
+
 export const NOTE_ICON_CHAR = '✎';
 export const NOTE_ICON_SIZE = 0.065;
 export const NOTE_HIGHLIGHT_COLOR = PANEL_ACCENT_COLOR;
