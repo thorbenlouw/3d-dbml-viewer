@@ -11,11 +11,5 @@ coverage/
 playwright-report/
 test-results/
 
-# Dolt database files (added by bd init)
-.dolt/
-.beads/dolt
-*.db
-.beads/.beads-credential-key
-
 
 .claude/settings.local.json

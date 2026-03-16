@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "bd_3d_dbml_viewer",
-  "project_id": "a2e7b4c8-fe1c-48e5-81d2-3857058530fb"
-}
