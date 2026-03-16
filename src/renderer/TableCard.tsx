@@ -46,6 +46,7 @@ interface TableCardProps {
   fieldDetailMode: FieldDetailMode;
   referencedFieldNames?: ReadonlySet<string>;
   isSticky?: boolean;
+  hopDistance?: number | null;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;

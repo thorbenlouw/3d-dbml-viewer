@@ -106,6 +106,7 @@ interface DraggableTableCardProps {
   fieldDetailMode: FieldDetailMode;
   referencedFieldNames?: ReadonlySet<string>;
   isSticky: boolean;
+  hopDistance: number | null;
   highlightedColumn?: string | '__table__';
   onTableHoverChange?: (value: HoverContext | null) => void;
   onColumnHoverChange?: (value: HoverContext | null) => void;
@@ -558,6 +559,7 @@ function DraggableTableCard({
   fieldDetailMode,
   referencedFieldNames,
   isSticky,
+  hopDistance,
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
@@ -573,6 +575,7 @@ function DraggableTableCard({
       onColumnHoverChange={onColumnHoverChange}
       onHeaderDoubleClick={onHeaderDoubleClick}
       isSticky={isSticky}
+      hopDistance={hopDistance}
     />
   );
 }
@@ -670,7 +673,7 @@ export default function Scene({
     [fieldDetailMode, referencedFieldLookup, schema.tables],
   );
 
-  const { nodes: simNodes } = useForceSimulation(schema, {
+  const { nodes: simNodes, hopDistances } = useForceSimulation(schema, {
     onSettled: handleSettled,
     stickyTableId: stickyTableIdForSchema,
     linkDistanceScale,
@@ -687,7 +690,12 @@ export default function Scene({
         cardNode.id,
         estimateTableCardDimensions(
           cardNode.table,
-          getVisibleColumnsForCard(cardNode.id, cardNode.table, fieldDetailMode, referencedFieldLookup),
+          getVisibleColumnsForCard(
+            cardNode.id,
+            cardNode.table,
+            fieldDetailMode,
+            referencedFieldLookup,
+          ),
         ),
       );
     }
@@ -715,7 +723,12 @@ export default function Scene({
     for (const cardNode of cardNodes) {
       const dimensions = estimateTableCardDimensions(
         cardNode.table,
-        getVisibleColumnsForCard(cardNode.id, cardNode.table, fieldDetailMode, referencedFieldLookup),
+        getVisibleColumnsForCard(
+          cardNode.id,
+          cardNode.table,
+          fieldDetailMode,
+          referencedFieldLookup,
+        ),
       );
       points.push(
         new THREE.Vector3(
@@ -957,10 +970,7 @@ export default function Scene({
           projectName={schema.projectName}
         />
         {schema.projectName && schema.projectNote && (
-          <ProjectNotesCard
-            projectName={schema.projectName}
-            projectNote={schema.projectNote}
-          />
+          <ProjectNotesCard projectName={schema.projectName} projectNote={schema.projectNote} />
         )}
       </div>
     );
@@ -1056,6 +1066,7 @@ export default function Scene({
               fieldDetailMode={fieldDetailMode}
               referencedFieldNames={referencedFieldLookup.get(node.id)}
               isSticky={node.id === effectiveStickyTableId}
+              hopDistance={hopDistances?.get(node.id) ?? null}
               highlightedColumn={highlightedColumn}
               onTableHoverChange={setHoverContext}
               onColumnHoverChange={setHoverContext}
@@ -1075,10 +1086,7 @@ export default function Scene({
       />
 
       {schema.projectName && schema.projectNote && (
-        <ProjectNotesCard
-          projectName={schema.projectName}
-          projectNote={schema.projectNote}
-        />
+        <ProjectNotesCard projectName={schema.projectName} projectNote={schema.projectNote} />
       )}
       <div
         style={{
