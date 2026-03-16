@@ -1045,6 +1045,8 @@ export default function Scene({
               fieldDetailMode={fieldDetailMode}
               sourceReferencedFieldNames={referencedFieldLookup.get(link.sourceId)}
               targetReferencedFieldNames={referencedFieldLookup.get(link.targetId)}
+              sourceHopDistance={hopDistances?.get(link.sourceId) ?? null}
+              targetHopDistance={hopDistances?.get(link.targetId) ?? null}
             />
           );
         })}

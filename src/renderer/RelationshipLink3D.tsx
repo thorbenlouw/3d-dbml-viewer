@@ -3,6 +3,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { FieldDetailMode, TableCardNode } from '@/types';
 import {
+  HOP_OPACITY_0,
+  HOP_OPACITY_1,
+  HOP_OPACITY_2,
+  HOP_OPACITY_FAR,
+  HOP_OPACITY_LERP_SPEED,
   LINK_HIGHLIGHT_COLOR,
   LINK_SEGMENTS,
   LINK_TUBE_RADIAL_SEGMENTS,
@@ -24,6 +29,16 @@ interface RelationshipLink3DProps {
   fieldDetailMode: FieldDetailMode;
   sourceReferencedFieldNames?: ReadonlySet<string>;
   targetReferencedFieldNames?: ReadonlySet<string>;
+  sourceHopDistance?: number | null;
+  targetHopDistance?: number | null;
+}
+
+function hopOpacityTarget(hopDistance: number | null | undefined): number {
+  if (hopDistance == null) return 1;
+  if (hopDistance === 0) return HOP_OPACITY_0;
+  if (hopDistance === 1) return HOP_OPACITY_1;
+  if (hopDistance === 2) return HOP_OPACITY_2;
+  return HOP_OPACITY_FAR;
 }
 
 function buildTubeGeometry(
@@ -78,9 +93,13 @@ export default function RelationshipLink3D({
   fieldDetailMode,
   sourceReferencedFieldNames,
   targetReferencedFieldNames,
+  sourceHopDistance = null,
+  targetHopDistance = null,
 }: RelationshipLink3DProps): ReactElement {
   const resolvedColor = resolveLinkColor(color);
   const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const currentOpacityRef = useRef<number>(1);
   const { camera } = useThree();
 
   const initialGeometry = useMemo(() => {
@@ -136,14 +155,26 @@ export default function RelationshipLink3D({
     const previousGeometry = mesh.geometry;
     mesh.geometry = nextGeometry;
     previousGeometry.dispose();
+
+    // Lerp toward the min of both endpoints' hop opacities.
+    const targetOpacity = Math.min(
+      hopOpacityTarget(sourceHopDistance),
+      hopOpacityTarget(targetHopDistance),
+    );
+    currentOpacityRef.current +=
+      (targetOpacity - currentOpacityRef.current) * HOP_OPACITY_LERP_SPEED;
+    if (materialRef.current) {
+      materialRef.current.opacity = currentOpacityRef.current;
+    }
   });
 
   return (
     <mesh ref={meshRef} geometry={initialGeometry}>
       <meshBasicMaterial
+        ref={materialRef}
         color={isHighlighted ? LINK_HIGHLIGHT_COLOR : resolvedColor}
         transparent
-        opacity={0.8}
+        opacity={1}
       />
     </mesh>
   );
