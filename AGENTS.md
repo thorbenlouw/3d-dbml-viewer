@@ -247,7 +247,7 @@ Each TODO.md file should finish with a statement that when all tasks are complet
 
 This is because we use the "Ralph Wiggum" plugin and agent automation style to repeatedly run agent sessions until a whole TODO is complete, and the agent looks for the <promise>DONE</promise> statement to know when to stop iterating .
 
-<!-- BEGIN BEADS INTEGRATION -->
+<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:d4f96305 -->
 
 ## Issue Tracking with bd (beads)
 
@@ -345,7 +345,6 @@ For more details, see README.md and docs/QUICKSTART.md.
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt pull
    bd dolt push
    git push
    git status  # MUST show "up to date with origin"
