@@ -21,6 +21,11 @@ import {
   COLUMN_HIGHLIGHT_COLOR,
   DISTANCE_FAR,
   DISTANCE_NEAR,
+  HOP_OPACITY_0,
+  HOP_OPACITY_1,
+  HOP_OPACITY_2,
+  HOP_OPACITY_FAR,
+  HOP_OPACITY_LERP_SPEED,
   NOTE_BADGE_TEXT_COLOR,
   NOTE_ICON_CHAR,
   OPACITY_FAR,
@@ -109,6 +114,7 @@ export default function TableCard({
   fieldDetailMode,
   referencedFieldNames,
   isSticky = false,
+  hopDistance = null,
   highlightedColumn,
   onTableHoverChange,
   onColumnHoverChange,
@@ -121,6 +127,7 @@ export default function TableCard({
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const titleScaleGroupRef = useRef<THREE.Group>(null);
+  const currentHopOpacityRef = useRef<number>(1);
   const { camera } = useThree();
 
   const visibleColumns = useMemo(
@@ -172,7 +179,25 @@ export default function TableCard({
     worldPositionRef.current.set(node.x, node.y, node.z);
     const dist = camera.position.distanceTo(worldPositionRef.current);
     const t = Math.max(0, Math.min(1, (DISTANCE_FAR - dist) / (DISTANCE_FAR - DISTANCE_NEAR)));
-    const opacity = OPACITY_FAR + t * (OPACITY_NEAR - OPACITY_FAR);
+    const distanceOpacity = OPACITY_FAR + t * (OPACITY_NEAR - OPACITY_FAR);
+
+    // Compute target hop opacity and lerp toward it for smooth transitions.
+    let targetHopOpacity: number;
+    if (hopDistance === null) {
+      targetHopOpacity = 1;
+    } else if (hopDistance === 0) {
+      targetHopOpacity = HOP_OPACITY_0;
+    } else if (hopDistance === 1) {
+      targetHopOpacity = HOP_OPACITY_1;
+    } else if (hopDistance === 2) {
+      targetHopOpacity = HOP_OPACITY_2;
+    } else {
+      targetHopOpacity = HOP_OPACITY_FAR;
+    }
+    currentHopOpacityRef.current +=
+      (targetHopOpacity - currentHopOpacityRef.current) * HOP_OPACITY_LERP_SPEED;
+
+    const opacity = Math.min(distanceOpacity, currentHopOpacityRef.current);
     headerMaterialRef.current.opacity = opacity;
     if (bodyMaterialRef.current) {
       bodyMaterialRef.current.opacity = opacity;
