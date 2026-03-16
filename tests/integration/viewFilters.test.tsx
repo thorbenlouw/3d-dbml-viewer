@@ -11,8 +11,15 @@ import type { ParsedSchema } from '@/types';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const basicFixture = readFileSync(resolve(__dirname, '../fixtures/view-filters-basic.dbml'), 'utf-8');
-const largeFixture = readFileSync(resolve(__dirname, '../fixtures/view-filters-large.dbml'), 'utf-8');
+const basicFixture = readFileSync(
+  resolve(__dirname, '../fixtures/view-filters-basic.dbml'),
+  'utf-8',
+);
+const largeFixture = readFileSync(
+  resolve(__dirname, '../fixtures/view-filters-large.dbml'),
+  'utf-8',
+);
+const groupedFixture = readFileSync(resolve(__dirname, '../fixtures/tablegroups.dbml'), 'utf-8');
 
 const originalFileReader = window.FileReader;
 
@@ -133,8 +140,12 @@ describe('view filters integration', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('scene-mode')).toHaveTextContent('table-only');
-      expect(within(screen.getByTestId('scene-table-users')).queryByText('email')).not.toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-posts')).queryByText('title')).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-users')).queryByText('email'),
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-posts')).queryByText('title'),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByLabelText('Ref Fields Only'));
@@ -142,13 +153,25 @@ describe('view filters integration', () => {
     await waitFor(() => {
       expect(screen.getByTestId('scene-mode')).toHaveTextContent('ref-fields-only');
       expect(within(screen.getByTestId('scene-table-users')).getByText('id')).toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-users')).queryByText('email')).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-users')).queryByText('email'),
+      ).not.toBeInTheDocument();
       expect(within(screen.getByTestId('scene-table-posts')).getByText('id')).toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-posts')).getByText('author_id')).toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-posts')).queryByText('title')).not.toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-comments')).getByText('post_id')).toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-comments')).getByText('commenter_id')).toBeInTheDocument();
-      expect(within(screen.getByTestId('scene-table-comments')).queryByText('body')).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-posts')).getByText('author_id'),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-posts')).queryByText('title'),
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-comments')).getByText('post_id'),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-comments')).getByText('commenter_id'),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('scene-table-comments')).queryByText('body'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -222,5 +245,55 @@ describe('view filters integration', () => {
     expect(screen.getByLabelText('Table Only')).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /table_01/i })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /table_31/i })).toBeChecked();
+  });
+
+  it('reload resets filters to defaults for files opened via the File System Access API', async () => {
+    const handle = {
+      kind: 'file' as const,
+      name: 'grouped.dbml',
+      getFile: vi.fn(
+        async () => new File([groupedFixture], 'grouped.dbml', { type: 'text/plain' }),
+      ),
+      isSameEntry: vi.fn(async () => false),
+      queryPermission: vi.fn(async () => 'granted' as const),
+      requestPermission: vi.fn(async () => 'granted' as const),
+      createWritable: vi.fn(async () => {
+        throw new Error('not implemented');
+      }),
+    };
+
+    vi.stubGlobal(
+      'showOpenFilePicker',
+      vi.fn(async () => [handle]),
+    );
+
+    render(<App />);
+
+    await waitForInitialSchema();
+
+    fireEvent.click(screen.getByRole('button', { name: /load a dbml file from disk/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scene-table-count')).toHaveTextContent('5');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /open view filters/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /orders/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scene-table-count')).toHaveTextContent('4');
+      expect(screen.getByRole('checkbox', { name: /orders/i })).not.toBeChecked();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /close view filters/i }));
+    fireEvent.click(screen.getByRole('button', { name: /reload current file/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scene-table-count')).toHaveTextContent('5');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /open view filters/i }));
+
+    expect(screen.getByRole('checkbox', { name: /orders/i })).toBeChecked();
   });
 });

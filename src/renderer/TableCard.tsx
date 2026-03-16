@@ -21,11 +21,6 @@ import {
   COLUMN_HIGHLIGHT_COLOR,
   DISTANCE_FAR,
   DISTANCE_NEAR,
-  HOP_OPACITY_0,
-  HOP_OPACITY_1,
-  HOP_OPACITY_2,
-  HOP_OPACITY_FAR,
-  HOP_OPACITY_LERP_SPEED,
   NOTE_BADGE_TEXT_COLOR,
   NOTE_ICON_CHAR,
   OPACITY_FAR,
@@ -43,6 +38,7 @@ import {
 import { resolveTableHeaderColor } from './colorUtils';
 import { formatColumnDefaultLabel } from './columnDefault';
 import { getVisibleColumns } from './fieldDetailMode';
+import { getHopOpacityTarget, lerpHopOpacity } from './hopOpacity';
 import { estimateTableCardDimensions } from './tableCardMetrics';
 import { SCENE_INTERACTION_ROLE, SCENE_ROLE_TABLE_CARD } from './interaction';
 
@@ -109,6 +105,27 @@ function toColumnHoverContext(node: TableCardNode, column: ParsedColumn): HoverC
   };
 }
 
+function setMaterialOpacity(
+  material: THREE.Material | THREE.Material[] | null | undefined,
+  opacity: number,
+): void {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    for (const item of material) {
+      item.transparent = true;
+      item.opacity = opacity;
+    }
+    return;
+  }
+  material.transparent = true;
+  material.opacity = opacity;
+}
+
+function setObjectOpacity(object: THREE.Mesh | null | undefined, opacity: number): void {
+  if (!object) return;
+  setMaterialOpacity(object.material, opacity);
+}
+
 export default function TableCard({
   node,
   fieldDetailMode,
@@ -123,8 +140,21 @@ export default function TableCard({
   const groupRef = useRef<THREE.Group>(null);
   const headerMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const bodyMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const edgeMaterialRef = useRef<THREE.LineBasicMaterial>(null);
+  const stickyGlowMaterialRef = useRef<THREE.LineBasicMaterial>(null);
   const tableHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const headerHitMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const titleTextRef = useRef<THREE.Mesh>(null);
+  const headerNoteBadgeMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const headerNoteTextRef = useRef<THREE.Mesh>(null);
+  const rowMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
+  const rowNameTextRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const rowTypeTextRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const rowDefaultTextRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const fieldBadgeMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
+  const fieldBadgeTextRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const fieldNoteBadgeMaterialRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([]);
+  const fieldNoteBadgeTextRefs = useRef<Array<THREE.Mesh | null>>([]);
   const worldPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const titleScaleGroupRef = useRef<THREE.Group>(null);
   const currentHopOpacityRef = useRef<number>(1);
@@ -182,26 +212,47 @@ export default function TableCard({
     const distanceOpacity = OPACITY_FAR + t * (OPACITY_NEAR - OPACITY_FAR);
 
     // Compute target hop opacity and lerp toward it for smooth transitions.
-    let targetHopOpacity: number;
-    if (hopDistance === null) {
-      targetHopOpacity = 1;
-    } else if (hopDistance === 0) {
-      targetHopOpacity = HOP_OPACITY_0;
-    } else if (hopDistance === 1) {
-      targetHopOpacity = HOP_OPACITY_1;
-    } else if (hopDistance === 2) {
-      targetHopOpacity = HOP_OPACITY_2;
-    } else {
-      targetHopOpacity = HOP_OPACITY_FAR;
-    }
-    currentHopOpacityRef.current +=
-      (targetHopOpacity - currentHopOpacityRef.current) * HOP_OPACITY_LERP_SPEED;
+    const targetHopOpacity = getHopOpacityTarget(hopDistance);
+    currentHopOpacityRef.current = lerpHopOpacity(currentHopOpacityRef.current, targetHopOpacity);
 
     const opacity = Math.min(distanceOpacity, currentHopOpacityRef.current);
     headerMaterialRef.current.opacity = opacity;
     if (bodyMaterialRef.current) {
       bodyMaterialRef.current.opacity = opacity;
     }
+    if (edgeMaterialRef.current) {
+      edgeMaterialRef.current.transparent = true;
+      edgeMaterialRef.current.opacity = opacity;
+    }
+    if (stickyGlowMaterialRef.current) {
+      stickyGlowMaterialRef.current.transparent = true;
+      stickyGlowMaterialRef.current.opacity = STICKY_BORDER_GLOW_OPACITY * opacity;
+    }
+    setObjectOpacity(titleTextRef.current, opacity);
+    if (headerNoteBadgeMaterialRef.current) {
+      headerNoteBadgeMaterialRef.current.opacity = 0.95 * opacity;
+    }
+    setObjectOpacity(headerNoteTextRef.current, opacity);
+    for (const material of rowMaterialRefs.current) {
+      if (!material) continue;
+      material.transparent = true;
+      material.opacity = opacity;
+    }
+    for (const material of fieldBadgeMaterialRefs.current) {
+      if (!material) continue;
+      material.transparent = true;
+      material.opacity = 0.95 * opacity;
+    }
+    for (const material of fieldNoteBadgeMaterialRefs.current) {
+      if (!material) continue;
+      material.transparent = true;
+      material.opacity = 0.95 * opacity;
+    }
+    for (const textRef of rowNameTextRefs.current) setObjectOpacity(textRef, opacity);
+    for (const textRef of rowTypeTextRefs.current) setObjectOpacity(textRef, opacity);
+    for (const textRef of rowDefaultTextRefs.current) setObjectOpacity(textRef, opacity);
+    for (const textRef of fieldBadgeTextRefs.current) setObjectOpacity(textRef, opacity);
+    for (const textRef of fieldNoteBadgeTextRefs.current) setObjectOpacity(textRef, opacity);
 
     if (titleScaleGroupRef.current) {
       const titleT = Math.max(
@@ -238,11 +289,17 @@ export default function TableCard({
       </mesh>
 
       <lineSegments geometry={edgesGeometry}>
-        <lineBasicMaterial color={isSticky ? STICKY_BORDER_COLOR : CARD_EDGE_COLOR} />
+        <lineBasicMaterial
+          ref={edgeMaterialRef}
+          color={isSticky ? STICKY_BORDER_COLOR : CARD_EDGE_COLOR}
+          transparent
+          opacity={OPACITY_FAR}
+        />
       </lineSegments>
       {isSticky && (
         <lineSegments geometry={edgesGeometry} scale={[1.035, 1.035, 1.035]}>
           <lineBasicMaterial
+            ref={stickyGlowMaterialRef}
             color={STICKY_BORDER_COLOR}
             transparent
             opacity={STICKY_BORDER_GLOW_OPACITY}
@@ -285,6 +342,7 @@ export default function TableCard({
         position={[0, dimensions.height / 2 + 0.18, dimensions.depth / 2 + 0.01]}
       >
         <Text
+          ref={titleTextRef}
           font={SCENE_FONT_REGULAR}
           color={highlightedColumn === '__table__' ? COLUMN_HIGHLIGHT_COLOR : TEXT_COLOR}
           fontSize={TEXT_HEADER_SIZE * 2}
@@ -306,9 +364,15 @@ export default function TableCard({
         >
           <mesh>
             <boxGeometry args={[BADGE_WIDTH, BADGE_HEIGHT, 0.01]} />
-            <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
+            <meshBasicMaterial
+              ref={headerNoteBadgeMaterialRef}
+              color={BADGE_BG_COLOR}
+              transparent
+              opacity={0.95}
+            />
           </mesh>
           <Text
+            ref={headerNoteTextRef}
             font={SCENE_FONT_BOLD}
             color={NOTE_BADGE_TEXT_COLOR}
             fontSize={TEXT_BADGE_SIZE}
@@ -360,6 +424,9 @@ export default function TableCard({
             <mesh position={[0, rowY, dimensions.depth / 2 - rowSliceDepth / 2 + 0.001]}>
               <boxGeometry args={[rowSliceWidth, CARD_ROW_HEIGHT * 0.86, rowSliceDepth]} />
               <meshBasicMaterial
+                ref={(element) => {
+                  rowMaterialRefs.current[index] = element;
+                }}
                 color={
                   isHighlighted
                     ? COLUMN_HIGHLIGHT_COLOR
@@ -371,6 +438,9 @@ export default function TableCard({
             </mesh>
 
             <Text
+              ref={(element) => {
+                rowNameTextRefs.current[index] = element as THREE.Mesh | null;
+              }}
               font={column.isPrimaryKey ? SCENE_FONT_BOLD : SCENE_FONT_REGULAR}
               color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
@@ -383,6 +453,9 @@ export default function TableCard({
             </Text>
 
             <Text
+              ref={(element) => {
+                rowTypeTextRefs.current[index] = element as THREE.Mesh | null;
+              }}
               font={SCENE_FONT_REGULAR}
               color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : TEXT_COLOR}
               fontSize={TEXT_ROW_SIZE}
@@ -400,6 +473,9 @@ export default function TableCard({
 
             {defaultLabel && (
               <Text
+                ref={(element) => {
+                  rowDefaultTextRefs.current[index] = element as THREE.Mesh | null;
+                }}
                 font={SCENE_FONT_REGULAR}
                 color={isHighlighted ? HIGHLIGHT_TEXT_COLOR : SECONDARY_TEXT_COLOR}
                 fontSize={TEXT_ROW_SIZE * 0.9}
@@ -422,9 +498,20 @@ export default function TableCard({
                 >
                   <mesh>
                     <boxGeometry args={[BADGE_WIDTH, BADGE_HEIGHT, 0.01]} />
-                    <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
+                    <meshBasicMaterial
+                      ref={(element) => {
+                        fieldBadgeMaterialRefs.current[index * 8 + badgeIndex] = element;
+                      }}
+                      color={BADGE_BG_COLOR}
+                      transparent
+                      opacity={0.95}
+                    />
                   </mesh>
                   <Text
+                    ref={(element) => {
+                      fieldBadgeTextRefs.current[index * 8 + badgeIndex] =
+                        element as THREE.Mesh | null;
+                    }}
                     font={SCENE_FONT_BOLD}
                     color={BADGE_TEXT_COLOR}
                     fontSize={TEXT_BADGE_SIZE}
@@ -451,9 +538,19 @@ export default function TableCard({
               >
                 <mesh>
                   <boxGeometry args={[BADGE_WIDTH, BADGE_HEIGHT, 0.01]} />
-                  <meshBasicMaterial color={BADGE_BG_COLOR} transparent opacity={0.95} />
+                  <meshBasicMaterial
+                    ref={(element) => {
+                      fieldNoteBadgeMaterialRefs.current[index] = element;
+                    }}
+                    color={BADGE_BG_COLOR}
+                    transparent
+                    opacity={0.95}
+                  />
                 </mesh>
                 <Text
+                  ref={(element) => {
+                    fieldNoteBadgeTextRefs.current[index] = element as THREE.Mesh | null;
+                  }}
                   font={SCENE_FONT_BOLD}
                   color={NOTE_BADGE_TEXT_COLOR}
                   fontSize={TEXT_BADGE_SIZE}

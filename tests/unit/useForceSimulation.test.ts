@@ -210,6 +210,30 @@ describe('useForceSimulation', () => {
     expect(onSettled).toHaveBeenCalledTimes(2);
   });
 
+  it('returns null hopDistances when sticky mode is inactive', () => {
+    const { result } = renderHook(() => useForceSimulation(schema, { stickyTableId: null }));
+
+    expect(result.current.hopDistances).toBeNull();
+  });
+
+  it('recomputes hopDistances when stickyTableId changes', () => {
+    const { result, rerender } = renderHook(
+      ({ stickyTableId }: { stickyTableId: string | null }) =>
+        useForceSimulation(schema, { stickyTableId }),
+      { initialProps: { stickyTableId: 't1' } },
+    );
+
+    expect(result.current.hopDistances?.get('t1')).toBe(0);
+    expect(result.current.hopDistances?.get('t2')).toBe(1);
+    expect(result.current.hopDistances?.get('t3')).toBe(2);
+
+    rerender({ stickyTableId: 't3' });
+
+    expect(result.current.hopDistances?.get('t3')).toBe(0);
+    expect(result.current.hopDistances?.get('t2')).toBe(1);
+    expect(result.current.hopDistances?.get('t1')).toBe(2);
+  });
+
   it('nudge does not move pinned neighbours', () => {
     const { result } = renderHook(() => useForceSimulation(schema));
 

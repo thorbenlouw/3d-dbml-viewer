@@ -5,85 +5,24 @@
 
 Running 19 tests using 5 workers
 
-  ✓   1 [chromium] › tests/visual/viewFilters.spec.ts:43:1 › view filters defaults for small and large schemas (7.4s)
-  ✓   3 [chromium] › tests/visual/viewFilterGroups.spec.ts:56:1 › AT-1: no Table Groups section for ungrouped schema; section appears for grouped schema (7.8s)
-  ✓   4 [chromium] › tests/visual/scene.spec.ts:3:1 › 3D scene renders with canvas, Reset View button, and no errors (8.1s)
-  ✓   5 [chromium] › tests/e2e/loadDbmlFromDisk.spec.ts:17:1 › load DBML from disk — all example files and error handling (9.1s)
-  ✓   2 [chromium] › tests/e2e/interactiveLayout.spec.ts:42:1 › interactive layout — canvas loads and tables are visible (9.4s)
-  ✓   8 [chromium] › tests/visual/scene.spec.ts:43:1 › field and table notes — canvas loads without errors (3.5s)
-  ✓   7 [chromium] › tests/visual/viewFilterGroups.spec.ts:79:1 › AT-2: hiding a group removes all its tables from the scene (3.9s)
-  ✓   6 [chromium] › tests/visual/viewFilters.spec.ts:62:1 › view filters mode changes, hide/show actions, and indicator work (4.4s)
-  ✓  11 [chromium] › tests/visual/viewFilters.spec.ts:102:1 › view filters dialog closes on Escape (1.7s)
-  ✓  10 [chromium] › tests/visual/viewFilterGroups.spec.ts:98:1 › AT-3: refs to hidden-group tables disappear (1.9s)
-  ✓   9 [chromium] › tests/e2e/interactiveLayout.spec.ts:90:1 › interactive layout — drag simulation runs without JS errors (5.0s)
-  ✓  12 [chromium] › tests/visual/viewFilterGroups.spec.ts:117:1 › AT-4: Ungrouped filter hides only ungrouped tables (1.6s)
-  ✓  14 [chromium] › tests/visual/viewFilterGroups.spec.ts:138:1 › AT-5: Show TableGroup Boundaries toggle responds to user interaction (1.2s)
-  ✘  15 [chromium] › tests/visual/viewFilterGroups.spec.ts:158:1 › AT-6: per-table hidden table stays hidden after group re-enable (1.0s)
-  ✓  13 [chromium] › tests/e2e/interactiveLayout.spec.ts:131:1 › interactive layout — focus marker placement/removal works (3.7s)
-  ✓  16 [chromium] › tests/visual/viewFilterGroups.spec.ts:185:1 › AT-7: reload button is disabled for default schema; visible and disabled (870ms)
-  ✓  17 [chromium] › tests/visual/viewFilterGroups.spec.ts:203:1 › AT-8: reload picks up changed file content via mocked File System Access API (1.4s)
-  ✘  18 [chromium] › tests/visual/viewFilterGroups.spec.ts:256:1 › AT-9: reload resets filters to defaults (930ms)
+  ✓   4 [chromium] › tests/visual/scene.spec.ts:3:1 › 3D scene renders with canvas, Reset View button, and no errors (10.2s)
+  ✓   5 [chromium] › tests/visual/viewFilters.spec.ts:43:1 › view filters defaults for small and large schemas (10.3s)
+  ✓   2 [chromium] › tests/visual/viewFilterGroups.spec.ts:56:1 › AT-1: no Table Groups section for ungrouped schema; section appears for grouped schema (10.5s)
+  ✓   3 [chromium] › tests/e2e/interactiveLayout.spec.ts:42:1 › interactive layout — canvas loads and tables are visible (12.7s)
+  ✓   1 [chromium] › tests/e2e/loadDbmlFromDisk.spec.ts:17:1 › load DBML from disk — all example files and error handling (12.8s)
+  ✓   6 [chromium] › tests/visual/scene.spec.ts:43:1 › field and table notes — canvas loads without errors (3.8s)
+  ✓   8 [chromium] › tests/visual/viewFilterGroups.spec.ts:79:1 › AT-2: hiding a group removes all its tables from the scene (4.0s)
+  ✓   7 [chromium] › tests/visual/viewFilters.spec.ts:62:1 › view filters mode changes, hide/show actions, and indicator work (4.4s)
+  ✓  10 [chromium] › tests/visual/viewFilterGroups.spec.ts:98:1 › AT-3: refs to hidden-group tables disappear (2.1s)
+  ✓  11 [chromium] › tests/visual/viewFilters.spec.ts:102:1 › view filters dialog closes on Escape (2.1s)
+  ✓   9 [chromium] › tests/e2e/interactiveLayout.spec.ts:90:1 › interactive layout — drag simulation runs without JS errors (4.9s)
+  ✓  12 [chromium] › tests/visual/viewFilterGroups.spec.ts:117:1 › AT-4: Ungrouped filter hides only ungrouped tables (1.9s)
+  ✓  14 [chromium] › tests/visual/viewFilterGroups.spec.ts:138:1 › AT-5: Show TableGroup Boundaries toggle responds to user interaction (1.9s)
+  ✓  13 [chromium] › tests/e2e/interactiveLayout.spec.ts:131:1 › interactive layout — focus marker placement/removal works (4.2s)
+  ✓  15 [chromium] › tests/visual/viewFilterGroups.spec.ts:158:1 › AT-6: per-table hidden table stays hidden after group re-enable (1.7s)
+  ✓  16 [chromium] › tests/visual/viewFilterGroups.spec.ts:185:1 › AT-7: reload button is disabled for default schema; visible and disabled (994ms)
+  ✓  17 [chromium] › tests/visual/viewFilterGroups.spec.ts:203:1 › AT-8: reload picks up changed file content via mocked File System Access API (1.5s)
+  ✓  18 [chromium] › tests/visual/viewFilterGroups.spec.ts:256:1 › AT-9: reload resets filters to defaults (1.6s)
   ✓  19 [chromium] › tests/visual/viewFilterGroups.spec.ts:300:1 › AT-10: reload failure shows error banner and preserves prior scene (1.4s)
 
-
-  1) [chromium] › tests/visual/viewFilterGroups.spec.ts:158:1 › AT-6: per-table hidden table stays hidden after group re-enable 
-
-    Error: locator.uncheck: Clicking the checkbox did not change its state
-    Call log:
-    [2m  - waiting for getByRole('checkbox', { name: /orders/i })[22m
-    [2m    - locator resolved to <button type="button" role="checkbox" aria-checked="true" aria-label="orders">✓</button>[22m
-    [2m  - attempting click action[22m
-    [2m    - waiting for element to be visible, enabled and stable[22m
-    [2m    - element is visible, enabled and stable[22m
-    [2m    - scrolling into view if needed[22m
-    [2m    - done scrolling[22m
-    [2m    - performing click action[22m
-    [2m    - click action done[22m
-    [2m    - waiting for scheduled navigations to finish[22m
-    [2m    - navigations have finished[22m
-
-
-      167 |   // Hide one per-table entry (orders) via the Tables section
-      168 |   // Accessible name includes "N fields" suffix; use substring match
-    > 169 |   await page.getByRole('checkbox', { name: /orders/i }).uncheck();
-          |                                                         ^
-      170 |   await expect(sceneRoot).toHaveAttribute('data-table-count', '4');
-      171 |
-      172 |   // Now hide the commerce group — drops orders and customers
-        at /Users/thorben/dev/equalexperts/3d-dbml-viewer/tests/visual/viewFilterGroups.spec.ts:169:57
-
-    Error Context: test-results/visual-viewFilterGroups-AT-e5cf8-idden-after-group-re-enable-chromium/error-context.md
-
-  2) [chromium] › tests/visual/viewFilterGroups.spec.ts:256:1 › AT-9: reload resets filters to defaults 
-
-    Error: locator.uncheck: Clicking the checkbox did not change its state
-    Call log:
-    [2m  - waiting for getByRole('checkbox', { name: /orders/i })[22m
-    [2m    - locator resolved to <button type="button" role="checkbox" aria-checked="true" aria-label="orders">✓</button>[22m
-    [2m  - attempting click action[22m
-    [2m    - waiting for element to be visible, enabled and stable[22m
-    [2m    - element is visible, enabled and stable[22m
-    [2m    - scrolling into view if needed[22m
-    [2m    - done scrolling[22m
-    [2m    - performing click action[22m
-    [2m    - click action done[22m
-    [2m    - waiting for scheduled navigations to finish[22m
-    [2m    - navigations have finished[22m
-
-
-      284 |   // Apply a filter (hide orders table)
-      285 |   await openViewFilters(page);
-    > 286 |   await page.getByRole('checkbox', { name: /orders/i }).uncheck();
-          |                                                         ^
-      287 |   await expect(sceneRoot).toHaveAttribute('data-table-count', '4');
-      288 |   await page.getByRole('button', { name: /close view filters/i }).click();
-      289 |
-        at /Users/thorben/dev/equalexperts/3d-dbml-viewer/tests/visual/viewFilterGroups.spec.ts:286:57
-
-    Error Context: test-results/visual-viewFilterGroups-AT-62123--resets-filters-to-defaults-chromium/error-context.md
-
-  2 failed
-    [chromium] › tests/visual/viewFilterGroups.spec.ts:158:1 › AT-6: per-table hidden table stays hidden after group re-enable 
-    [chromium] › tests/visual/viewFilterGroups.spec.ts:256:1 › AT-9: reload resets filters to defaults 
-  17 passed (25.8s)
- ELIFECYCLE  Command failed with exit code 1.
+  19 passed (30.7s)

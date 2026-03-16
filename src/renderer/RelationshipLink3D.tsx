@@ -3,17 +3,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { FieldDetailMode, TableCardNode } from '@/types';
 import {
-  HOP_OPACITY_0,
-  HOP_OPACITY_1,
-  HOP_OPACITY_2,
-  HOP_OPACITY_FAR,
-  HOP_OPACITY_LERP_SPEED,
   LINK_HIGHLIGHT_COLOR,
   LINK_SEGMENTS,
   LINK_TUBE_RADIAL_SEGMENTS,
   LINK_TUBE_RADIUS,
 } from './constants';
 import { resolveLinkColor } from './colorUtils';
+import { getHopOpacityTarget, lerpHopOpacity } from './hopOpacity';
 import { buildRelationshipLinkRoute } from './linkRouting';
 import { computeRowSideAnchor } from './tableCardAnchors';
 
@@ -31,14 +27,6 @@ interface RelationshipLink3DProps {
   targetReferencedFieldNames?: ReadonlySet<string>;
   sourceHopDistance?: number | null;
   targetHopDistance?: number | null;
-}
-
-function hopOpacityTarget(hopDistance: number | null | undefined): number {
-  if (hopDistance == null) return 1;
-  if (hopDistance === 0) return HOP_OPACITY_0;
-  if (hopDistance === 1) return HOP_OPACITY_1;
-  if (hopDistance === 2) return HOP_OPACITY_2;
-  return HOP_OPACITY_FAR;
 }
 
 function buildTubeGeometry(
@@ -158,11 +146,10 @@ export default function RelationshipLink3D({
 
     // Lerp toward the min of both endpoints' hop opacities.
     const targetOpacity = Math.min(
-      hopOpacityTarget(sourceHopDistance),
-      hopOpacityTarget(targetHopDistance),
+      getHopOpacityTarget(sourceHopDistance),
+      getHopOpacityTarget(targetHopDistance),
     );
-    currentOpacityRef.current +=
-      (targetOpacity - currentOpacityRef.current) * HOP_OPACITY_LERP_SPEED;
+    currentOpacityRef.current = lerpHopOpacity(currentOpacityRef.current, targetOpacity);
     if (materialRef.current) {
       materialRef.current.opacity = currentOpacityRef.current;
     }

@@ -45,15 +45,12 @@ const BUTTON_STYLE: CSSProperties = {
 const CHECKBOX_CONTROL_STYLE: CSSProperties = {
   width: '1rem',
   height: '1rem',
+  margin: 0,
   borderRadius: '0.2rem',
   border: '1px solid rgba(148, 163, 184, 0.5)',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '0.75rem',
-  lineHeight: 1,
-  userSelect: 'none',
   flexShrink: 0,
+  cursor: 'pointer',
+  accentColor: '#38bdf8',
 };
 
 export default function ViewFiltersDialog({
@@ -278,12 +275,11 @@ export default function ViewFiltersDialog({
                           flex: 1,
                         }}
                       >
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={checked}
+                        <input
+                          type="checkbox"
+                          checked={checked}
                           aria-label={group.name}
-                          onClick={() => {
+                          onChange={() => {
                             const next = new Set(filterState.visibleTableGroupIds);
                             if (checked) {
                               next.delete(group.name);
@@ -294,12 +290,8 @@ export default function ViewFiltersDialog({
                           }}
                           style={{
                             ...CHECKBOX_CONTROL_STYLE,
-                            background: checked ? '#38bdf8' : 'transparent',
-                            color: checked ? '#0f172a' : 'transparent',
                           }}
-                        >
-                          ✓
-                        </button>
+                        />
                         <span>{group.name}</span>
                       </div>
                       <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
@@ -328,12 +320,11 @@ export default function ViewFiltersDialog({
                         flex: 1,
                       }}
                     >
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
+                      <input
+                        type="checkbox"
+                        checked={filterState.visibleTableGroupIds.has('__ungrouped__')}
                         aria-label="Ungrouped"
-                        onClick={() => {
+                        onChange={() => {
                           const next = new Set(filterState.visibleTableGroupIds);
                           if (next.has('__ungrouped__')) {
                             next.delete('__ungrouped__');
@@ -344,16 +335,8 @@ export default function ViewFiltersDialog({
                         }}
                         style={{
                           ...CHECKBOX_CONTROL_STYLE,
-                          background: filterState.visibleTableGroupIds.has('__ungrouped__')
-                            ? '#38bdf8'
-                            : 'transparent',
-                          color: filterState.visibleTableGroupIds.has('__ungrouped__')
-                            ? '#0f172a'
-                            : 'transparent',
                         }}
-                      >
-                        ✓
-                      </button>
+                      />
                       <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Ungrouped</span>
                     </div>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
@@ -464,12 +447,11 @@ export default function ViewFiltersDialog({
                         flex: 1,
                       }}
                     >
-                      <button
-                        type="button"
-                        role="checkbox"
-                        aria-checked={checked}
+                      <input
+                        type="checkbox"
+                        checked={checked}
                         aria-label={table.name}
-                        onClick={() => {
+                        onChange={() => {
                           const nextVisible = new Set(filterState.visibleTableIds);
                           if (checked) {
                             nextVisible.delete(table.id);
@@ -484,12 +466,8 @@ export default function ViewFiltersDialog({
                         }}
                         style={{
                           ...CHECKBOX_CONTROL_STYLE,
-                          background: checked ? '#38bdf8' : 'transparent',
-                          color: checked ? '#0f172a' : 'transparent',
                         }}
-                      >
-                        ✓
-                      </button>
+                      />
                       <span>{table.name}</span>
                     </div>
                     <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>

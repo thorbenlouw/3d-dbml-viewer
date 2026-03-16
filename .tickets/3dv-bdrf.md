@@ -1,6 +1,6 @@
 ---
 id: 3dv-bdrf
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-03-16T12:57:23Z
@@ -17,3 +17,9 @@ Create src/layout/hopDistance.ts with a pure computeHopDistances(startId, neighb
 ## Acceptance Criteria
 
 A new pure BFS utility exists at src/layout/hopDistance.ts and returns expected hop counts, including Infinity for disconnected nodes.
+
+## Notes
+
+**2026-03-16T13:00:54Z**
+
+Verified existing src/layout/hopDistance.ts implementation against Feature 21 PRD. Confirmed Infinity handling for disconnected nodes and passing coverage in tests/unit/hopDistance.test.ts via pnpm test:run on 2026-03-16.
