@@ -253,6 +253,8 @@ This is because we use the "Ralph Wiggum" plugin and agent automation style to r
 
 **IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
 
+Beads uses Dolt (a version-controlled database). You must assume dolt is running locally outside the sandbox and NEVER try to start it yourself. If you need to, ask the user to start the dolt server with `bd dolt start` OUTSIDE the sandbox
+
 ### Why bd?
 
 - Dependency-aware: Track blockers and relationships between issues
