@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   forceSimulation,
   forceManyBody,
@@ -13,6 +13,7 @@ import {
 } from 'd3-force-3d';
 import type { ParsedSchema, SimulationNode } from '@/types';
 import { buildGroupDescriptors, placeGroups, computeGroupSeedPositions } from './groupLayout';
+import { computeHopDistances } from './hopDistance';
 
 const BASE_LINK_DISTANCE = 1.5;
 const STICKY_LINK_DISTANCE_MULTIPLIER = 0.65;
@@ -181,6 +182,7 @@ export function useForceSimulation(
   optionsOrOnSettled?: ForceSimulationOptions | ((nodes: SimulationNode[]) => void),
 ): {
   nodes: SimulationNode[];
+  hopDistances: Map<string, number> | null;
   setPin: (id: string, position: { x: number; y: number; z: number } | null) => void;
   nudge: (id: string, delta: { x: number; y: number; z: number }, neighbourFactor: number) => void;
 } {
@@ -213,6 +215,20 @@ export function useForceSimulation(
   const [nodes, setNodes] = useState<SimulationNode[]>(() =>
     buildLiveNodes(schema).map(toSimulationNode),
   );
+
+  const hopDistances = useMemo<Map<string, number> | null>(() => {
+    if (!stickyTableId) return null;
+    const neighbourMap = new Map<string, string[]>();
+    for (const ref of schema.refs) {
+      const src = neighbourMap.get(ref.sourceId) ?? [];
+      src.push(ref.targetId);
+      neighbourMap.set(ref.sourceId, src);
+      const tgt = neighbourMap.get(ref.targetId) ?? [];
+      tgt.push(ref.sourceId);
+      neighbourMap.set(ref.targetId, tgt);
+    }
+    return computeHopDistances(stickyTableId, neighbourMap);
+  }, [stickyTableId, schema]);
 
   const flushState = useCallback(() => {
     setNodes(liveNodesRef.current.map(toSimulationNode));
@@ -433,5 +449,5 @@ export function useForceSimulation(
     [],
   );
 
-  return { nodes, setPin, nudge };
+  return { nodes, hopDistances, setPin, nudge };
 }
